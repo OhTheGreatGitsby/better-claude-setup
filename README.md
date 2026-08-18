@@ -56,7 +56,7 @@ Everything else is a *skill*, which Claude reads only when the task calls for it
 - It never touches skills you installed yourself.
 - It cannot change the personal instructions or styles you set inside the Claude app,
   because those live on your Anthropic account rather than on your computer. See
-  [docs/research.md](docs/research.md#claude-desktop-and-the-claude-app).
+  [docs/research.md](docs/research.md#4-claude-desktop-and-the-claude-app).
 
 ## Install
 

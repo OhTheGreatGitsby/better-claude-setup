@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join } from 'node:path'
 import type { BackupRecord } from '@shared/types'
-import { backupsDir, claudeHome, claudeMdPath, claudeSettingsPath, skillsDir } from './env'
+import { backupsDir, claudeHome } from './env'
 import type { Env } from './env'
 import { copyDir, ensureDir, pathExists, removeIfExists } from './safe-fs'
 
@@ -99,12 +99,4 @@ export async function listBackups(env: Env): Promise<BackupRecord[]> {
     }
   }
   return records.sort((a, b) => b.createdAtIso.localeCompare(a.createdAtIso))
-}
-
-/** Paths the backup covers, for display on the permission screen. */
-export function backupCoverage(env: Env): string[] {
-  const home = claudeHome(env)
-  return [claudeSettingsPath(env), claudeMdPath(env), skillsDir(env)].map((p) =>
-    relative(home, p).replace(/\\/g, '/')
-  )
 }

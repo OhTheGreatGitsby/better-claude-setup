@@ -7,7 +7,12 @@ A small desktop app that configures Claude properly for you, and can undo everyt
 > Better Claude Setup is an independent community project. It is not affiliated with,
 > endorsed by, or supported by Anthropic.
 
-![The welcome screen](docs/screenshots/scan.png)
+![The system scan screen, showing what is already installed](docs/screenshots/scan.png)
+
+| | |
+| --- | --- |
+| ![Choosing components](docs/screenshots/customize.png) | ![The list of changes before anything happens](docs/screenshots/review.png) |
+| ![The result of a setup run](docs/screenshots/result.png) | ![Managing an existing setup](docs/screenshots/manager.png) |
 
 ---
 

@@ -1,4 +1,4 @@
-import type { Category, CategoryId, ComponentMeta } from '@shared/types'
+import type { Category, ComponentMeta } from '@shared/types'
 import { SKILLS } from './content'
 
 /**
@@ -307,8 +307,4 @@ export function componentById(id: string): ComponentMeta | undefined {
 
 export function recommendedComponentIds(): string[] {
   return COMPONENTS.filter((c) => c.recommended).map((c) => c.id)
-}
-
-export function componentsInCategory(category: CategoryId): ComponentMeta[] {
-  return COMPONENTS.filter((c) => c.category === category)
 }

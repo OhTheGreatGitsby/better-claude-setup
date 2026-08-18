@@ -48,8 +48,6 @@ interface Operation {
   version: string
 }
 
-export const APP_VERSION_FALLBACK = '1.0.0'
-
 /** Builds the exact list of changes an install would make, without making any of them. */
 export async function buildPlan(
   env: Env,

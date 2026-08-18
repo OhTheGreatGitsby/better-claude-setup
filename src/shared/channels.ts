@@ -19,5 +19,3 @@ export const CHANNELS = {
   openExternal: 'shell:open-external',
   revealConfig: 'shell:reveal'
 } as const
-
-export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS]

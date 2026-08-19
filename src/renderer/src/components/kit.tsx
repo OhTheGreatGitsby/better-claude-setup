@@ -122,6 +122,10 @@ export function Button({
     size === 'md' ? '' : `btn--${size}`,
     bracket ? 'btn--bracket' : ''
   ]
+  // Chromium folds CSS generated content into the accessible name, so the decorative
+  // angle brackets would otherwise be read out as part of the label. Naming the button
+  // explicitly keeps what assistive technology announces equal to what is written on it.
+  const label = bracket && typeof children === 'string' ? children : undefined
   return (
     <button
       type="button"
@@ -129,6 +133,7 @@ export function Button({
       onClick={onClick}
       disabled={disabled}
       title={title}
+      aria-label={label}
     >
       {children}
     </button>

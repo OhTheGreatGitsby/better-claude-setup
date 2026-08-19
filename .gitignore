@@ -13,3 +13,8 @@ coverage/
 screenshot.png
 test-results/
 playwright-report/
+
+# Design reference material supplied for the redesign. Kept locally, never published:
+# the layout reference is a third party's work, and the mascot artwork that the app
+# actually uses lives in src/renderer/src/assets/.
+Reference UI and Elements to USe/

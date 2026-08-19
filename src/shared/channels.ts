@@ -17,5 +17,7 @@ export const CHANNELS = {
   diagnostics: 'diagnostics:build',
   saveDiagnostics: 'diagnostics:save',
   openExternal: 'shell:open-external',
+  scanProgress: 'system:scan-progress',
+  installProgress: 'install:progress',
   revealConfig: 'shell:reveal'
 } as const

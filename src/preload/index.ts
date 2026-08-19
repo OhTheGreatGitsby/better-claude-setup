@@ -7,7 +7,8 @@ import type {
   ComponentMeta,
   DetectionResult,
   InstallPlan,
-  OperationResult
+  OperationResult,
+  StepResult
 } from '@shared/types'
 
 /**
@@ -41,7 +42,27 @@ const api = {
     ipcRenderer.invoke(CHANNELS.saveDiagnostics),
   openExternal: (url: string): Promise<boolean> => ipcRenderer.invoke(CHANNELS.openExternal, url),
   revealConfig: (which: 'claude' | 'backups'): Promise<boolean> =>
-    ipcRenderer.invoke(CHANNELS.revealConfig, which)
+    ipcRenderer.invoke(CHANNELS.revealConfig, which),
+
+  /**
+   * Progress subscriptions. Each returns an unsubscribe function, and the listener only
+   * ever receives plain data forwarded from the main process.
+   */
+  onScanStep: (listener: (step: string) => void): (() => void) => {
+    const handler = (_event: unknown, step: string): void => listener(step)
+    ipcRenderer.on(CHANNELS.scanProgress, handler)
+    return () => ipcRenderer.removeListener(CHANNELS.scanProgress, handler)
+  },
+  onInstallStep: (
+    listener: (payload: { step: StepResult; done: number; total: number }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: unknown,
+      payload: { step: StepResult; done: number; total: number }
+    ): void => listener(payload)
+    ipcRenderer.on(CHANNELS.installProgress, handler)
+    return () => ipcRenderer.removeListener(CHANNELS.installProgress, handler)
+  }
 }
 
 export type BcsApi = typeof api

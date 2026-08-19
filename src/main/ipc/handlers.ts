@@ -67,18 +67,26 @@ export function registerIpcHandlers(): void {
     recommended: recommendedComponentIds()
   }))
 
-  ipcMain.handle(CHANNELS.scan, async (): Promise<DetectionResult> => {
-    return scanSystem(env, appVersion())
+  ipcMain.handle(CHANNELS.scan, async (event): Promise<DetectionResult> => {
+    // Each stage is reported to the window as it genuinely finishes, so the scan screen
+    // shows real progress rather than a timed animation.
+    return scanSystem(env, appVersion(), (step) => {
+      if (!event.sender.isDestroyed()) event.sender.send(CHANNELS.scanProgress, step)
+    })
   })
 
   ipcMain.handle(CHANNELS.plan, async (_event, ids: unknown): Promise<InstallPlan> => {
     return buildPlan(env, appVersion(), sanitiseComponentIds(ids))
   })
 
-  ipcMain.handle(CHANNELS.install, async (_event, ids: unknown): Promise<OperationResult> => {
+  ipcMain.handle(CHANNELS.install, async (event, ids: unknown): Promise<OperationResult> => {
     const componentIds = sanitiseComponentIds(ids)
     await log(env, 'info', `Install requested for ${componentIds.length} components`)
-    return installComponents(env, appVersion(), componentIds)
+    return installComponents(env, appVersion(), componentIds, (step, done, total) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send(CHANNELS.installProgress, { step, done, total })
+      }
+    })
   })
 
   ipcMain.handle(CHANNELS.remove, async (_event, ids: unknown): Promise<OperationResult> => {

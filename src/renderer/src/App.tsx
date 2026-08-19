@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type {
   AppInfo,
@@ -7,26 +7,32 @@ import type {
   ComponentMeta,
   DetectionResult,
   InstallPlan,
-  OperationResult
+  OperationResult,
+  StepResult
 } from '@shared/types'
-import { Button, Card, Notice } from './components/ui'
+import { Mascot } from './components/Mascot'
+import { Notice, Track } from './components/kit'
 import { Welcome } from './screens/Welcome'
-import { SystemScan } from './screens/SystemScan'
-import { ClaudeCodeStep } from './screens/ClaudeCodeStep'
+import { Explain } from './screens/Explain'
+import { Scan } from './screens/Scan'
+import { InstallClaudeCode } from './screens/InstallClaudeCode'
+import { Choose } from './screens/Choose'
 import { Customize } from './screens/Customize'
 import { Review } from './screens/Review'
+import { Installing } from './screens/Installing'
 import { Result } from './screens/Result'
 import { Manager } from './screens/Manager'
 
 type Screen =
   | 'loading'
   | 'welcome'
-  | 'learn'
+  | 'explain'
   | 'scan'
   | 'claude-code'
   | 'choose'
   | 'customize'
   | 'review'
+  | 'installing'
   | 'result'
   | 'manager'
 
@@ -37,32 +43,43 @@ export function App(): ReactNode {
   const [components, setComponents] = useState<ComponentMeta[]>([])
   const [recommended, setRecommended] = useState<string[]>([])
   const [scan, setScan] = useState<DetectionResult | null>(null)
-  const [scanning, setScanning] = useState(false)
+  const [scanStages, setScanStages] = useState<string[]>([])
   const [selected, setSelected] = useState<string[]>([])
   const [plan, setPlan] = useState<InstallPlan | null>(null)
   const [installedIds, setInstalledIds] = useState<string[]>([])
   const [backups, setBackups] = useState<BackupRecord[]>([])
   const [result, setResult] = useState<OperationResult | null>(null)
+  const [liveSteps, setLiveSteps] = useState<StepResult[]>([])
+  const [liveProgress, setLiveProgress] = useState({ done: 0, total: 0 })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
 
-  // The scan asks the Claude Code binary for its version, which can take a couple of
-  // seconds. It therefore runs on its own rather than blocking the first paint.
+  /** Scan stages arrive from the engine as each one genuinely finishes. */
+  useEffect(() => {
+    return window.bcs.onScanStep((step) => {
+      setScanStages((current) => (current.includes(step) ? current : [...current, step]))
+    })
+  }, [])
+
+  useEffect(() => {
+    return window.bcs.onInstallStep(({ step, done, total }) => {
+      setLiveSteps((current) => [...current, step])
+      setLiveProgress({ done, total })
+    })
+  }, [])
+
   const refreshState = useCallback(async (): Promise<DetectionResult> => {
-    setScanning(true)
-    try {
-      const [nextScan, nextInstalled, nextBackups] = await Promise.all([
-        window.bcs.scanSystem(),
-        window.bcs.installedComponents(),
-        window.bcs.listBackups()
-      ])
-      setScan(nextScan)
-      setInstalledIds(nextInstalled)
-      setBackups(nextBackups)
-      return nextScan
-    } finally {
-      setScanning(false)
-    }
+    setScanStages([])
+    const [nextScan, nextInstalled, nextBackups] = await Promise.all([
+      window.bcs.scanSystem(),
+      window.bcs.installedComponents(),
+      window.bcs.listBackups()
+    ])
+    setScan(nextScan)
+    setInstalledIds(nextInstalled)
+    setBackups(nextBackups)
+    return nextScan
   }, [])
 
   useEffect(() => {
@@ -80,10 +97,9 @@ export function App(): ReactNode {
         setComponents(catalog.components)
         setRecommended(catalog.recommended)
         setInstalledIds(installed)
-        setSelected(catalog.recommended)
+        setSelected(installed.length > 0 ? installed : catalog.recommended)
         setScreen(installed.length > 0 ? 'manager' : 'welcome')
-
-        // The full scan continues in the background so the first screen appears at once.
+        // The scan continues behind the first screen so nothing waits on it.
         await refreshState()
       } catch (bootError) {
         if (!active) return
@@ -97,10 +113,9 @@ export function App(): ReactNode {
     }
   }, [refreshState])
 
-  // Moving to a new screen should start at the top of it, not wherever the previous
-  // screen happened to be scrolled to.
+  // A new screen starts at its own top, not wherever the previous one was scrolled to.
   useEffect(() => {
-    document.querySelector('.app__body')?.scrollTo({ top: 0 })
+    bodyRef.current?.scrollTo({ top: 0 })
   }, [screen])
 
   const toggle = useCallback((id: string) => {
@@ -112,23 +127,29 @@ export function App(): ReactNode {
   const goToReview = useCallback(async () => {
     setPlan(null)
     setScreen('review')
-    const nextPlan = await window.bcs.buildPlan(selected)
-    setPlan(nextPlan)
+    setPlan(await window.bcs.buildPlan(selected))
   }, [selected])
 
-  const confirmInstall = useCallback(async () => {
-    setBusy(true)
-    try {
-      const outcome = await window.bcs.install(selected)
-      setResult(outcome)
-      await refreshState()
-      setScreen('result')
-    } catch (installError) {
-      setError(installError instanceof Error ? installError.message : 'Setup failed.')
-    } finally {
-      setBusy(false)
-    }
-  }, [selected, refreshState])
+  const runInstall = useCallback(
+    async (ids: string[]) => {
+      setBusy(true)
+      setLiveSteps([])
+      setLiveProgress({ done: 0, total: 0 })
+      setScreen('installing')
+      try {
+        const outcome = await window.bcs.install(ids)
+        setResult(outcome)
+        await refreshState()
+        setScreen('result')
+      } catch (installError) {
+        setError(installError instanceof Error ? installError.message : 'Setup failed.')
+        setScreen('review')
+      } finally {
+        setBusy(false)
+      }
+    },
+    [refreshState]
+  )
 
   const removeComponents = useCallback(
     async (ids: string[]) => {
@@ -151,7 +172,8 @@ export function App(): ReactNode {
       try {
         const outcome = await window.bcs.restore(backupId)
         setResult(outcome)
-        await refreshState()
+        const next = await refreshState()
+        setSelected(next.betterClaudeSetup.installedComponentIds)
         setScreen('manager')
       } finally {
         setBusy(false)
@@ -160,29 +182,75 @@ export function App(): ReactNode {
     [refreshState]
   )
 
-  function afterScan(): void {
-    if (scan && scan.claudeCode.state !== 'installed') {
-      setScreen('claude-code')
-    } else {
-      setScreen('choose')
-    }
-  }
+  /** Enabling from the manager installs just that component; disabling removes just it. */
+  const toggleInstalled = useCallback(
+    async (id: string, next: boolean) => {
+      if (next) {
+        setBusy(true)
+        try {
+          const outcome = await window.bcs.install([id])
+          setResult(outcome)
+          await refreshState()
+        } finally {
+          setBusy(false)
+        }
+      } else {
+        await removeComponents([id])
+      }
+    },
+    [refreshState, removeComponents]
+  )
+
+  const afterScan = useCallback(() => {
+    setScreen(scan && scan.claudeCode.state !== 'installed' ? 'claude-code' : 'choose')
+  }, [scan])
+
+  const platform = scan?.platform ?? 'win32'
 
   return (
-    <div className="app">
-      <div className="app__body">
+    <div className="app" data-platform={platform}>
+      <header className="titlebar">
+        <span className="titlebar__mark" aria-hidden="true">
+          ⌃
+        </span>
+        <span className="titlebar__name">Better Claude Setup</span>
+        <span className="titlebar__spacer" />
+        <span className="titlebar__meta">
+          {scan?.betterClaudeSetup.state === 'configured'
+            ? 'ACTIVE'
+            : scan?.betterClaudeSetup.state === 'partial'
+              ? 'NEEDS REPAIR'
+              : 'NOT SET UP'}
+        </span>
+      </header>
+
+      <main className="app__body" ref={bodyRef}>
+        <div className="grid-field" aria-hidden="true" />
+
         {error ? (
-          <div className="container">
-            <Notice tone="bad">{error}</Notice>
+          <div className="page page--narrow">
+            <Notice tone="bad" icon="!">
+              {error}
+            </Notice>
           </div>
         ) : null}
 
         {screen === 'loading' ? (
-          <div className="container">
-            <h1>Better Claude Setup</h1>
-            <p className="lede">
-              <span className="spinner" aria-hidden="true" /> Starting up…
-            </p>
+          <div className="page page--narrow">
+            <div
+              style={{
+                display: 'grid',
+                placeItems: 'center',
+                gap: 'var(--s-5)',
+                paddingTop: 'var(--s-16)'
+              }}
+            >
+              <Mascot state="idle" size="lg" />
+              <p className="mono">Starting up</p>
+              <div style={{ width: 200 }}>
+                <Track value={null} />
+              </div>
+            </div>
           </div>
         ) : null}
 
@@ -193,26 +261,26 @@ export function App(): ReactNode {
               setScreen('scan')
               void refreshState()
             }}
-            onLearn={() => setScreen('learn')}
+            onLearn={() => setScreen('explain')}
           />
         ) : null}
 
-        {screen === 'learn' ? (
-          <LearnMore components={components} onBack={() => setScreen('welcome')} />
+        {screen === 'explain' ? (
+          <Explain components={components} onBack={() => setScreen('welcome')} />
         ) : null}
 
         {screen === 'scan' ? (
-          <SystemScan
+          <Scan
             scan={scan}
-            scanning={scanning}
-            onRescan={() => void refreshState()}
+            stagesDone={scanStages}
             onContinue={afterScan}
-            onBack={() => setScreen('welcome')}
+            onRescan={() => void refreshState()}
+            onBack={() => setScreen(installedIds.length > 0 ? 'manager' : 'welcome')}
           />
         ) : null}
 
         {screen === 'claude-code' && scan ? (
-          <ClaudeCodeStep
+          <InstallClaudeCode
             scan={scan}
             onContinue={() => setScreen('choose')}
             onBack={() => setScreen('scan')}
@@ -223,7 +291,7 @@ export function App(): ReactNode {
         ) : null}
 
         {screen === 'choose' ? (
-          <ChooseSetup
+          <Choose
             recommendedCount={recommended.length}
             onRecommended={() => {
               setSelected(recommended)
@@ -243,7 +311,7 @@ export function App(): ReactNode {
             claudeCodeInstalled={scan?.claudeCode.state === 'installed'}
             onToggle={toggle}
             onContinue={() => void goToReview()}
-            onBack={() => setScreen('choose')}
+            onBack={() => setScreen(installedIds.length > 0 ? 'manager' : 'choose')}
           />
         ) : null}
 
@@ -253,8 +321,16 @@ export function App(): ReactNode {
             components={components}
             selected={selected}
             busy={busy}
-            onConfirm={() => void confirmInstall()}
+            onConfirm={() => void runInstall(selected)}
             onBack={() => setScreen('customize')}
+          />
+        ) : null}
+
+        {screen === 'installing' ? (
+          <Installing
+            steps={liveSteps}
+            done={liveProgress.done}
+            total={liveProgress.total || selected.length + 1}
           />
         ) : null}
 
@@ -263,20 +339,32 @@ export function App(): ReactNode {
             result={result}
             components={components}
             installedIds={installedIds}
+            busy={busy}
             onDone={() => {
               setResult(null)
               setScreen('manager')
             }}
             onRetry={() => setScreen('review')}
+            onUndo={() => {
+              const latest = backups[0]
+              if (latest) void restore(latest.id)
+            }}
           />
         ) : null}
 
         {screen === 'manager' && !scan ? (
-          <div className="container">
-            <h1>Your Claude setup</h1>
-            <p className="lede">
-              <span className="spinner" aria-hidden="true" /> Checking what is installed…
-            </p>
+          <div className="page page--narrow">
+            <div
+              style={{
+                display: 'grid',
+                placeItems: 'center',
+                gap: 'var(--s-5)',
+                paddingTop: 'var(--s-12)'
+              }}
+            >
+              <Mascot state="scanning" size="lg" />
+              <p className="mono">Checking what is installed</p>
+            </div>
           </div>
         ) : null}
 
@@ -288,120 +376,30 @@ export function App(): ReactNode {
             backups={backups}
             busy={busy}
             lastResult={result}
-            onManage={() => {
+            onDismissResult={() => setResult(null)}
+            onOpenCustomize={() => {
               setResult(null)
               setSelected(installedIds.length > 0 ? installedIds : recommended)
               setScreen('customize')
             }}
             onRescan={() => void refreshState()}
-            onRemove={(ids) => void removeComponents(ids)}
+            onToggleComponent={(id, next) => void toggleInstalled(id, next)}
+            onRepair={() => void runInstall(scan.betterClaudeSetup.missingComponentIds)}
+            onRemoveAll={() => void removeComponents(installedIds)}
             onRestore={(id) => void restore(id)}
           />
         ) : null}
-      </div>
+      </main>
 
       <footer className="app__footer">
-        <span className="footer-note">
+        <span className="app__footer__note">
           {info?.disclaimer ??
-            'Better Claude Setup is an independent community project. It is not affiliated with, endorsed by, or supported by Anthropic.'}
+            'Better Claude Setup is an independent community project, not affiliated with Anthropic.'}
         </span>
-        <span className="brand">
-          {info?.author} · v{info?.version ?? '—'}
+        <span className="mono">
+          {info?.author ?? 'KC8 — OhTheGreatGitsby'} · v{info?.version ?? '—'}
         </span>
       </footer>
-    </div>
-  )
-}
-
-function ChooseSetup({
-  recommendedCount,
-  onRecommended,
-  onCustomize,
-  onCancel
-}: {
-  recommendedCount: number
-  onRecommended: () => void
-  onCustomize: () => void
-  onCancel: () => void
-}): ReactNode {
-  return (
-    <div className="container">
-      <h1>How would you like to set Claude up?</h1>
-      <p className="lede">You will see every change before anything happens.</p>
-
-      <Card>
-        <h2>Recommended setup</h2>
-        <p className="muted">
-          The {recommendedCount} improvements that help almost everyone: better working habits,
-          writing and editing, research and fact checking, coding, and planning. This is the right
-          choice if you are not sure.
-        </p>
-        <Button variant="primary" onClick={onRecommended}>
-          Install recommended setup
-        </Button>
-      </Card>
-
-      <Card>
-        <h2>Customise</h2>
-        <p className="muted">
-          Turn each part on or off yourself, and see exactly what each one writes.
-        </p>
-        <Button onClick={onCustomize}>Customise</Button>
-      </Card>
-
-      <div className="actions" style={{ marginTop: 12 }}>
-        <Button variant="ghost" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-function LearnMore({
-  components,
-  onBack
-}: {
-  components: ComponentMeta[]
-  onBack: () => void
-}): ReactNode {
-  return (
-    <div className="container">
-      <h1>What this changes</h1>
-      <p className="lede">
-        Claude reads a small instructions file at the start of every conversation, and can load
-        extra &ldquo;skills&rdquo; when a task needs them. Better Claude Setup writes good versions
-        of both for you.
-      </p>
-
-      <Card>
-        <h2>Why it is kept small</h2>
-        <p className="muted" style={{ marginBottom: 0 }}>
-          Claude has a limited working memory, and everything loaded at the start of a conversation
-          uses some of it up. So only one short block of instructions is always loaded. Everything
-          else is a skill, which Claude reads only when the task actually calls for it — costing you
-          nothing the rest of the time.
-        </p>
-      </Card>
-
-      <Card>
-        <h2>What can be installed</h2>
-        {components.map((component) => (
-          <div className="row" key={component.id}>
-            <span className="row__label">
-              <strong style={{ color: 'var(--text)' }}>{component.name}</strong>
-              <br />
-              <span className="small">{component.summary}</span>
-            </span>
-          </div>
-        ))}
-      </Card>
-
-      <div className="actions" style={{ marginTop: 16 }}>
-        <Button variant="primary" onClick={onBack}>
-          Back
-        </Button>
-      </div>
     </div>
   )
 }

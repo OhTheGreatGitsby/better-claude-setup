@@ -283,7 +283,9 @@ function firstMeaningfulLine(text: string): string {
 export async function installComponents(
   env: Env,
   appVersion: string,
-  componentIds: string[]
+  componentIds: string[],
+  /** Called as each step genuinely finishes, so the interface can show real progress. */
+  onStep?: (step: StepResult, index: number, total: number) => void
 ): Promise<OperationResult> {
   const { operations, skipped } = await buildOperations(env, componentIds)
   const steps: StepResult[] = [...skipped]
@@ -301,9 +303,18 @@ export async function installComponents(
   let manifest = await loadManifest(env, appVersion)
   await ensureDir(claudeHome(env))
 
+  // The backup counts as a step, so the total the interface shows matches what it sees.
+  const total = operations.length + 1
+  let completedCount = 0
+  const announce = (step: StepResult): void => {
+    steps.push(step)
+    completedCount += 1
+    onStep?.(step, completedCount, total)
+  }
+
   const backup = await createBackup(env, `Before installing: ${componentIds.join(', ')}`)
   manifest = recordBackup(manifest, backup)
-  steps.push({
+  announce({
     id: 'backup',
     label: 'Save a copy of your current Claude configuration',
     status: 'done',
@@ -324,7 +335,7 @@ export async function installComponents(
       completed.push(operation)
       const list = artifactsByComponent.get(operation.componentId) ?? []
       artifactsByComponent.set(operation.componentId, [...list, ...outcome.artifacts])
-      steps.push({
+      announce({
         id: operation.id,
         label: operation.label,
         status: 'done',
@@ -333,7 +344,7 @@ export async function installComponents(
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown failure.'
-      steps.push({
+      announce({
         id: operation.id,
         label: operation.label,
         status: 'failed',

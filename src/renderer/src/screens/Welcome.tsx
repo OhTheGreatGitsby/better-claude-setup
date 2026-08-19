@@ -1,6 +1,25 @@
 import type { ReactNode } from 'react'
 import type { AppInfo } from '@shared/types'
-import { Button, Card, Disclosure } from '../components/ui'
+import { Mascot } from '../components/Mascot'
+import { Button, Disclosure, Eyebrow, Panel, PanelBody, PanelHeader } from '../components/kit'
+
+const PROMISES = [
+  {
+    icon: '✎',
+    title: 'Better instructions',
+    body: 'A short set of working rules Claude reads at the start of every conversation.'
+  },
+  {
+    icon: '◈',
+    title: 'Skills, loaded on demand',
+    body: 'Writing, research, coding and planning know-how that costs nothing until it is needed.'
+  },
+  {
+    icon: '↺',
+    title: 'Completely reversible',
+    body: 'A restore point before the first change, and one button to put everything back.'
+  }
+]
 
 export function Welcome({
   info,
@@ -12,44 +31,59 @@ export function Welcome({
   onLearn: () => void
 }): ReactNode {
   return (
-    <div className="container">
-      <p className="brand">{info?.author ?? 'Made by KC8 — OhTheGreatGitsby'}</p>
-      <h1>Welcome to Better Claude Setup</h1>
-      <p className="lede">{info?.tagline}</p>
-
-      <Card>
-        <h2>What this does</h2>
-        <p className="muted">
-          Claude is very good out of the box, and noticeably better when it is told how you want it
-          to work. This app writes a small, carefully chosen set of instructions and skills into
-          Claude&apos;s own settings for you, so you get the benefit without learning any of the
-          technical machinery behind it.
-        </p>
-        <p className="muted" style={{ marginBottom: 0 }}>
-          It shows you every change before making it, keeps a copy of your current setup, and can
-          undo everything later.
-        </p>
-      </Card>
-
-      <Card flat>
-        <Disclosure summary="What it will not do">
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            <li>It does not read your conversations, files or projects.</li>
-            <li>It does not send anything anywhere. There is no account and no tracking.</li>
-            <li>It does not change Claude&apos;s safety behaviour or your Anthropic account.</li>
-            <li>It does not delete or overwrite settings you already had.</li>
-          </ul>
-        </Disclosure>
-      </Card>
-
-      <div className="actions" style={{ marginTop: 20 }}>
-        <Button variant="primary" onClick={onStart}>
-          Get started
-        </Button>
-        <Button variant="ghost" onClick={onLearn}>
-          Learn what this changes
-        </Button>
+    <div className="page">
+      <div className="hero" style={{ marginBottom: 'var(--s-6)' }}>
+        <div>
+          <Eyebrow>Setup · v{info?.version ?? '—'}</Eyebrow>
+          <h1 className="display" style={{ marginBottom: 'var(--s-4)' }}>
+            Make Claude
+            <br />
+            noticeably better.
+          </h1>
+          <p className="lead" style={{ marginBottom: 'var(--s-6)' }}>
+            Give Claude sharper instructions and a set of on-demand skills — without opening a
+            terminal or editing a single file.
+          </p>
+          <div className="cluster">
+            <Button variant="primary" size="lg" bracket onClick={onStart}>
+              Set up Claude
+            </Button>
+            <Button variant="ghost" size="lg" onClick={onLearn}>
+              See what changes
+            </Button>
+          </div>
+        </div>
+        <div className="hero__art">
+          <Mascot state="idle" size="xl" />
+        </div>
       </div>
+
+      <div
+        className="split"
+        style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 'var(--s-4)' }}
+      >
+        {PROMISES.map((promise) => (
+          <Panel key={promise.title}>
+            <PanelHeader icon={promise.icon} tone="accent" title={promise.title} />
+            <PanelBody>
+              <p className="small">{promise.body}</p>
+            </PanelBody>
+          </Panel>
+        ))}
+      </div>
+
+      <Panel sunken className="anim-rise">
+        <PanelBody tight>
+          <Disclosure summary="What this will not do">
+            <ul className="small" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}>
+              <li>It never reads your conversations, projects or documents.</li>
+              <li>It never sends anything anywhere. No account, no tracking.</li>
+              <li>It never changes Claude&apos;s safety behaviour or your Anthropic account.</li>
+              <li>It never overwrites a setting you already chose.</li>
+            </ul>
+          </Disclosure>
+        </PanelBody>
+      </Panel>
     </div>
   )
 }

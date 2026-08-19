@@ -57,14 +57,22 @@ export function createFixtureHome(): FixtureHome {
   }
 }
 
-export const test = base.extend<{ app: ElectronApplication; window: Page; home: FixtureHome }>({
+export const test = base.extend<{
+  app: ElectronApplication
+  window: Page
+  home: FixtureHome
+  /** Runs the app with Claude Code removed from the search path. */
+  hideClaudeCode: boolean
+}>({
+  hideClaudeCode: [false, { option: true }],
+
   home: async ({}, use) => {
     const home = createFixtureHome()
     await use(home)
     rmSync(home.root, { recursive: true, force: true })
   },
 
-  app: async ({ home }, use) => {
+  app: async ({ home, hideClaudeCode }, use) => {
     // ELECTRON_RUN_AS_NODE has to be absent, not empty: with the variable present at all
     // Electron starts as a plain Node process and never opens a window.
     const env: Record<string, string> = {}
@@ -74,6 +82,19 @@ export const test = base.extend<{ app: ElectronApplication; window: Page; home: 
     }
     env.USERPROFILE = home.root
     env.HOME = home.root
+
+    if (hideClaudeCode) {
+      // Whether Claude Code is installed is a property of the machine, so the only way to
+      // exercise the "not installed" branch on a developer's computer is to take it off
+      // the search path. Enough of the system path is kept for the app to still run and
+      // to query the operating system's own application records.
+      env.PATH = [
+        `${process.env.SystemRoot ?? 'C:\Windows'}\system32`,
+        process.env.SystemRoot ?? 'C:\Windows',
+        `${process.env.SystemRoot ?? 'C:\Windows'}\System32\WindowsPowerShell\v1.0`
+      ].join(';')
+      env.Path = env.PATH
+    }
 
     const app = await electron.launch({
       args: [resolve('out/main/index.js')],

@@ -7,6 +7,25 @@ import { expect, test } from './fixtures'
  */
 test.describe.configure({ mode: 'serial' })
 
+/**
+ * Whether Claude Code is installed is a property of the machine, not of the fixture home,
+ * so it differs between a developer's computer and a clean CI runner. When it is missing
+ * the app offers to install it first; these tests decline and carry on, which also
+ * exercises that screen's skip path.
+ */
+async function continuePastScan(window: import('@playwright/test').Page): Promise<void> {
+  await window.getByRole('button', { name: /^continue$/i }).click({ timeout: 30_000 })
+
+  const skip = window.getByRole('button', { name: /skip for now/i })
+  if (await skip.isVisible().catch(() => false)) {
+    await skip.click()
+  }
+
+  await expect(
+    window.getByRole('heading', { name: /how much do you want to change/i })
+  ).toBeVisible()
+}
+
 test('the whole setup path works end to end', async ({ window, home }) => {
   // --- launch -------------------------------------------------------------------
   await expect(window.getByRole('heading', { name: /make claude/i })).toBeVisible({
@@ -27,10 +46,7 @@ test('the whole setup path works end to end', async ({ window, home }) => {
   expect(home.hasSkill('my-own-skill')).toBe(true)
 
   // --- choose -------------------------------------------------------------------
-  await window.getByRole('button', { name: /^continue$/i }).click()
-  await expect(
-    window.getByRole('heading', { name: /how much do you want to change/i })
-  ).toBeVisible()
+  await continuePastScan(window)
   await window.getByRole('button', { name: /use recommended/i }).click()
 
   // --- review -------------------------------------------------------------------
@@ -89,7 +105,7 @@ test('the whole setup path works end to end', async ({ window, home }) => {
 
 test('the review screen can be left without changing anything', async ({ window, home }) => {
   await window.getByRole('button', { name: /set up claude/i }).click()
-  await window.getByRole('button', { name: /^continue$/i }).click({ timeout: 30_000 })
+  await continuePastScan(window)
   await window.getByRole('button', { name: /use recommended/i }).click()
   await expect(window.getByRole('heading', { name: /what will change/i })).toBeVisible()
 
@@ -114,7 +130,7 @@ test('detection reports what it found and how', async ({ window }) => {
 
 test('the custom path lets a single component be chosen', async ({ window, home }) => {
   await window.getByRole('button', { name: /set up claude/i }).click()
-  await window.getByRole('button', { name: /^continue$/i }).click({ timeout: 30_000 })
+  await continuePastScan(window)
   await window.getByRole('button', { name: /customise/i }).click()
 
   await expect(window.getByRole('heading', { name: /choose what to set up/i })).toBeVisible()
@@ -139,4 +155,32 @@ test('the custom path lets a single component be chosen', async ({ window, home 
 
   expect(home.readClaudeMd()).toContain('better-claude-setup:core-behaviour')
   expect(home.hasSkill('bcs-essay')).toBe(false)
+})
+
+test.describe('when Claude Code is not installed', () => {
+  test.use({ hideClaudeCode: true })
+
+  test('the setup offers to install it and can be skipped', async ({ window, home }) => {
+    await window.getByRole('button', { name: /set up claude/i }).click()
+    await expect(window.getByText(/here is what you already have/i)).toBeVisible({
+      timeout: 30_000
+    })
+    await expect(window.getByText(/not installed\./i).first()).toBeVisible()
+
+    await window.getByRole('button', { name: /^continue$/i }).click()
+    await expect(
+      window.getByRole('heading', { name: /claude code is not installed/i })
+    ).toBeVisible()
+
+    // Declining still leaves the rest of the setup available, because the instructions and
+    // skills are ordinary files that do not need the tool to be present.
+    await window.getByRole('button', { name: /skip for now/i }).click()
+    await window.getByRole('button', { name: /use recommended/i }).click()
+    await window.getByRole('button', { name: /approve and set up/i }).click()
+
+    await expect(window.getByRole('heading', { name: /claude is ready/i })).toBeVisible({
+      timeout: 30_000
+    })
+    expect(home.hasSkill('bcs-essay')).toBe(true)
+  })
 })

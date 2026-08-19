@@ -7,12 +7,12 @@ A small desktop app that configures Claude properly for you, and can undo everyt
 > Better Claude Setup is an independent community project. It is not affiliated with,
 > endorsed by, or supported by Anthropic.
 
-![The system scan screen, showing what is already installed](docs/screenshots/scan.png)
+![The welcome screen](docs/screenshots/welcome.png)
 
 | | |
 | --- | --- |
-| ![Choosing components](docs/screenshots/customize.png) | ![The list of changes before anything happens](docs/screenshots/review.png) |
-| ![The result of a setup run](docs/screenshots/result.png) | ![Managing an existing setup](docs/screenshots/manager.png) |
+| ![The system scan, showing what is already installed and how it was detected](docs/screenshots/scan.png) | ![The list of changes, shown before anything happens](docs/screenshots/review.png) |
+| ![The setup manager](docs/screenshots/manager.png) | ![The finished state](docs/screenshots/success.png) |
 
 ---
 
@@ -32,8 +32,26 @@ you have, and simply want a sane baseline without hand-maintaining a prompt libr
 ## What it actually changes
 
 Everything lands in your Claude folder (`~/.claude` on macOS and Linux,
-`%USERPROFILE%\.claude` on Windows), which both Claude Code and the Claude desktop app
-read.
+`%USERPROFILE%\.claude` on Windows).
+
+### Which Claude this reaches
+
+Better Claude Setup configures **Claude Code**. The Claude desktop app reads the same
+files from its **Code** tab, so local sessions there get the same setup. The rest of the
+desktop app does not, because it is configured by your Anthropic account rather than by
+anything on your computer.
+
+| Surface | Configured? |
+| --- | --- |
+| Claude Code — terminal, VS Code, JetBrains | **Yes** |
+| Claude desktop app — **Code** tab, local sessions | **Yes**, the same files |
+| Claude desktop app — **Chat** tab | No — account settings and Styles |
+| Claude desktop app — **Cowork** tab | No — skills sync from your claude.ai account |
+| claude.ai in a browser | No |
+| Cloud and SSH sessions | No — they read a different machine's home folder |
+
+Version 1.0.0 said this app "also improves the Claude desktop app", which was too broad.
+The table above is the accurate version, checked against Anthropic's documentation.
 
 | What | Where | Always in Claude's memory? |
 | --- | --- | --- |
@@ -54,8 +72,9 @@ Everything else is a *skill*, which Claude reads only when the task calls for it
 - It never overwrites a setting you already had. If you already set a value it wants, it
   keeps yours and tells you.
 - It never touches skills you installed yourself.
-- It cannot change the personal instructions or styles you set inside the Claude app,
-  because those live on your Anthropic account rather than on your computer. See
+- It cannot change the personal instructions or Styles you set inside the Claude app, or
+  anything in the Chat and Cowork tabs, because those live on your Anthropic account
+  rather than on your computer. See
   [docs/research.md](docs/research.md#4-claude-desktop-and-the-claude-app).
 
 ## Install
@@ -86,12 +105,16 @@ same app with no warning.
 ## Using it
 
 1. **Welcome** — a plain-language explanation of what will happen.
-2. **System scan** — read-only. It reports what you already have and changes nothing.
+2. **System scan** — read-only, and it shows its working. Each check appears as it
+   actually finishes, and **Detection details** lists every route it tried to find Claude
+   Code and the desktop app, so a wrong answer can be diagnosed rather than guessed at.
 3. **Claude Code** — if Claude Code is missing, it offers to install it via WinGet or
    Homebrew and shows you the exact command first. You can skip this.
 4. **Choose** — take the recommended set, or turn each part on and off yourself.
 5. **What will change?** — the complete list of writes, before any of them happen.
-6. **Done** — a report of every step, with technical details behind a toggle.
+6. **Setting up** — live progress. Each row changes when the real operation finishes;
+   nothing is on a timer.
+7. **Done** — what is now active, with the full step log behind a toggle.
 
 Reopen the app at any time and it becomes a manager: what is enabled, what is not, remove
 individual parts, or restore everything.
@@ -186,9 +209,12 @@ Stated plainly, because an installer that overstates itself should not be truste
   paid certificates that this project does not have. The release pipeline is otherwise
   complete; signing is a configuration step, not a rewrite.
 - **macOS builds have not been run on a Mac by the maintainer.** They are produced by CI on
-  a macOS runner and the build succeeds, but the app has not been launched there.
-- The app cannot configure the personal instructions or styles inside the Claude chat app,
-  because those are account settings held by Anthropic, not files on your machine.
+  a macOS runner and the build succeeds, but the app has not been launched there. macOS
+  desktop-app detection is implemented and unit-tested against fixtures, but has not been
+  confirmed against a real macOS installation.
+- The app cannot configure the Chat or Cowork tabs, or the personal instructions and Styles
+  inside the Claude app, because those are account settings held by Anthropic rather than
+  files on your machine.
 - Version pinning is not possible for the two optional Anthropic plugins: Claude Code owns
   that resolution and always installs the current marketplace version.
 

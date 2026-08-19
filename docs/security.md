@@ -7,7 +7,7 @@ managers. It is treated here as security-sensitive software, because that is wha
 
 | Adversary | Concern | Mitigation |
 | --- | --- | --- |
-| A hostile web page or script reaching the renderer | Using the app as a way to write arbitrary files or run commands | Renderer is sandboxed with no Node access, cannot navigate, and cannot make network requests. The bridge exposes 15 named methods and no generic invoke |
+| A hostile web page or script reaching the renderer | Using the app as a way to write arbitrary files or run commands | Renderer is sandboxed with no Node access, cannot navigate, and cannot make network requests. The bridge exposes 17 named methods and no generic invoke |
 | A malicious value arriving over IPC | Path traversal, command injection, writing outside the Claude folder | Every argument is validated against a closed set in the main process. Paths are resolved and proven to be inside their root. Commands are argv arrays, never strings |
 | A compromised or malicious component in the catalogue | Silent installation of something harmful | The catalogue is in this repository and is reviewable. Every component declares what it writes, whether it uses the network, and whether it runs commands. Only two components touch the network and both are off by default |
 | A supply-chain attack on this project's dependencies | Malicious code in a shipped build | Runtime dependencies: React and React DOM only. All versions pinned exactly. `npm audit` runs in CI. Actions are pinned to commit SHAs |
@@ -33,8 +33,10 @@ In [`src/main/index.ts`](../src/main/index.ts):
 ## IPC surface
 
 The preload bridge in [`src/preload/index.ts`](../src/preload/index.ts) exposes exactly
-fifteen methods. There is no `invoke(channel, …)` escape hatch, so the renderer cannot
-reach a channel the bridge does not name.
+seventeen methods: fifteen request/response calls and two progress subscriptions. There is
+no `invoke(channel, …)` escape hatch, so the renderer cannot reach a channel the bridge
+does not name, and the two subscriptions only ever deliver plain data the main process
+chose to send.
 
 In [`src/main/ipc/handlers.ts`](../src/main/ipc/handlers.ts):
 
@@ -115,12 +117,23 @@ The app never reads Claude conversations, project files, or the *values* inside 
 own settings. The diagnostic report contains counts and booleans, not content — asserted in
 [`tests/diagnostics.test.ts`](../tests/diagnostics.test.ts).
 
+## Detection and the command seam
+
+Desktop-app detection reads Windows' installed-application records with `reg.exe` and
+macOS Spotlight with `mdfind`. Both go through the same argv-array execution path as
+everything else: fixed command names, fixed arguments, no shell, nothing user-supplied.
+Reading the registry is a read; the app never writes to it.
+
+`Env.exec` allows a test to stand in for those commands. It is optional and unset in the
+shipped application, where `realEnv()` never populates it, so there is no path by which a
+renderer or a configuration file could substitute a command runner.
+
 ## Dependencies
 
 Runtime: `react`, `react-dom`. That is all.
 
-Everything else is a build-time dependency and is not shipped inside the application
-bundle. All versions are pinned exactly (`--save-exact`), and `npm ci` in CI installs from
+Everything else, including Playwright, is a build-time dependency and is not shipped
+inside the application bundle. All versions are pinned exactly (`--save-exact`), and `npm ci` in CI installs from
 the lockfile. `npm audit` runs on every push and reported **0 vulnerabilities** at the time
 of the first release.
 

@@ -101,10 +101,31 @@ and Anthropic's help centre article on
 
 Two findings changed the product:
 
-1. **The desktop app shares configuration with Claude Code.** The documentation states the
-   desktop app "runs the same engine as the CLI" and that they "share configuration
-   (CLAUDE.md files, MCP servers, hooks, skills, and settings)". So writing `~/.claude`
-   improves both. This is why the app has one configuration target rather than two.
+1. **The desktop app shares configuration with Claude Code — but only on one of its three
+   tabs.** Re-verified 19 August 2026 against the desktop reference page, because version
+   1.0.0 overstated this.
+
+   Under "Shared configuration" the documentation is explicit: "Desktop and CLI read the
+   same configuration files", covering `CLAUDE.md`, MCP servers, hooks, skills, and
+   "Settings in `~/.claude.json` and `~/.claude/settings.json`". It also states that
+   "Personal skills in `~/.claude/skills/` apply to local sessions".
+
+   But the same page says the **Cowork** tab "sources its skills, plugins, and connectors
+   from this Customize configuration, which syncs through your claude.ai account, **not**
+   from the CLI's `~/.claude` directory". And **Chat** is governed by account-level
+   personalization, as in the next finding.
+
+   | Surface | Reads `~/.claude`? |
+   | --- | --- |
+   | Claude Code CLI and IDE extensions | Yes |
+   | Desktop app, Code tab, local sessions | Yes |
+   | Desktop app, Cowork tab | No — account-synced |
+   | Desktop app, Chat tab | No — account settings and Styles |
+   | Cloud and SSH sessions | No — remote home, or account |
+
+   **Consequence:** the accurate claim is "configures Claude Code, and the desktop app's
+   Code tab reads the same files". The v1.0.0 phrasing "also improves the Claude desktop
+   app" was corrected in the interface, the README and this document.
 
 2. **Personal preferences and Styles are account settings, not local files.** Anthropic's
    personalization features — "Instructions for Claude" in profile settings, Styles, and
@@ -120,10 +141,44 @@ The desktop app's local configuration directory is `%APPDATA%\Claude` on Windows
 `~/Library/Application Support/Claude` on macOS. It contains `claude_desktop_config.json`
 (MCP servers) among other state. **This app does not write to it** — see §7.
 
-Windows installer locations checked for detection:
-`%LOCALAPPDATA%\AnthropicClaude\claude.exe`, `%LOCALAPPDATA%\Programs\Claude\Claude.exe`,
-`%LOCALAPPDATA%\Claude\Claude.exe`. macOS: `/Applications/Claude.app` and
-`~/Applications/Claude.app`.
+### Detecting the desktop app (revised 19 August 2026)
+
+Version 1.0.0 checked three per-user directories and reported "not found" for anything
+else. That was wrong in a way extra paths could never have fixed.
+
+On the machine this was reproduced on, the app is installed as an **MSIX package**:
+
+```
+Name              : Claude
+Publisher         : CN="Anthropic, PBC", O="Anthropic, PBC", ...
+Version           : 1.32352.1.0
+PackageFamilyName : Claude_pzs8sxrjxfjjc
+InstallLocation   : C:\Program Files\WindowsApps\Claude_1.32352.1.0_x64__pzs8sxrjxfjjc
+```
+
+`C:\Program Files\WindowsApps` is ACL-locked: an ordinary process cannot list it or stat
+inside it. A filesystem check against that location fails regardless of how the path is
+spelled. The app must ask Windows' own package records instead.
+
+Detection routes now used, in order:
+
+| Platform | Route | How |
+| --- | --- | --- |
+| Windows | App packages | `reg.exe query "HKCU\...\AppModel\Repository\Packages" /f Claude /k`, readable without elevation; the package full name carries the version |
+| Windows | Installed programs | `reg.exe query <uninstall key> /s /v DisplayName`, filtered to reject "Better Claude Setup" and "Claude Code" |
+| Windows | Application folders | `%LOCALAPPDATA%\AnthropicClaude`, `%LOCALAPPDATA%\Programs\Claude`, `%LOCALAPPDATA%\Claude` |
+| Windows | Start menu | a `Claude*.lnk` shortcut |
+| macOS | Applications | `/Applications/Claude.app`, `~/Applications/Claude.app`, version read from `Contents/Info.plist` |
+| macOS | Spotlight | `mdfind 'kMDItemFSName == "Claude.app"'` — matched on bundle name rather than a bundle identifier, which would be a guess |
+| Linux | Package paths | `/opt/Claude/claude-desktop`, `/usr/bin/claude-desktop`, `/usr/lib/claude-desktop/claude-desktop` |
+
+A leftover configuration directory with no application yields **uncertain** rather than a
+yes or a no, because both would be a guess. Every route is recorded and shown under
+"Detection details" in the app.
+
+`Get-AppxPackage` returns richer data than `reg.exe`, including the publisher, but starting
+PowerShell costs roughly a second and the registry read is enough to identify the package
+and its version.
 
 ## 5. Third-party and first-party components
 

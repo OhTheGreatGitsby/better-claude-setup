@@ -1,6 +1,6 @@
 {
   "name": "better-claude-setup",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "An independent, open-source desktop app that safely configures Claude Code and Claude Desktop for beginners.",
   "private": true,
   "license": "MIT",

@@ -23,14 +23,21 @@ report() {
   fail=1
 }
 
+# Four-part version numbers are indistinguishable from IP addresses by shape alone, so the
+# address check ignores lines that are plainly talking about a version or a package name.
+VERSION_CONTEXT='[Vv]ersion|_x64__|_arm64__|\Packages\|toBe\('
+
 scan_tree() {
-  local label="$1" pattern="$2"
+  local label="$1" pattern="$2" extra="${3:-}"
   local hits
   hits=$(git grep -n -I -E "$pattern" -- \
     ':!package-lock.json' \
     ':!docs/screenshots' \
     ':!scripts/privacy-scan.sh' 2>/dev/null \
     | grep -Ev "$ALLOWED_PLACEHOLDERS" || true)
+  if [ -n "$extra" ]; then
+    hits=$(printf '%s' "$hits" | grep -Ev "$extra" || true)
+  fi
   if [ -n "$hits" ]; then
     report "$label found in the working tree"
     echo "$hits" | head -20
@@ -75,7 +82,7 @@ scan_history "Credential-shaped string" "$SECRETS"
 
 echo "Scanning for private IP addresses..."
 # Basic ERE: git grep here does not accept PCRE non-capturing groups.
-scan_tree "IP address" '([0-9]{1,3}\.){3}[0-9]{1,3}'
+scan_tree "IP address" '([0-9]{1,3}\.){3}[0-9]{1,3}' "$VERSION_CONTEXT" 
 
 echo "Checking for files that should never be committed..."
 FORBIDDEN=$(git ls-files | grep -E '(^|/)(\.env($|\.)|.*\.pem$|.*\.p12$|.*\.pfx$|.*\.key$|\.npmrc$|id_rsa|\.claude/settings|credentials\.json)' || true)

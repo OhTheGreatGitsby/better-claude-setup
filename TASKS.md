@@ -76,14 +76,32 @@ actually run, not when the code that would do it was written.
   README rather than implied to be tested.
 - **Version pinning for the two Anthropic plugins.** Claude Code owns marketplace version
   resolution; this app cannot pin it.
-- **UI-level automated tests in CI.** The interface was driven manually against a fixture
-  home; the engine underneath is what the automated suite covers. A Playwright-for-Electron
-  suite is the obvious next step.
+- **macOS desktop-app detection on real hardware.** The routes are implemented and tested
+  against fixtures, but nobody has run them against an actual macOS installation.
+
+## DONE — v1.1.0
+
+- [x] Reproduce the Claude Desktop detection failure on a real machine and find the cause:
+      an MSIX package in an ACL-locked directory that no filesystem check could ever reach
+- [x] Rewrite detection to use the operating system's own installed-application records,
+      with every route recorded and shown in the interface
+- [x] Add a third answer, "uncertain", for a leftover settings folder with no application
+- [x] Add a command seam to `Env` so detection tests are hermetic
+- [x] Verify the fix read-only against the reporting machine: installed, 1.32352.1.0
+- [x] Re-verify the configuration-sharing claim and correct it everywhere: the desktop
+      app's Code tab shares files, Chat and Cowork do not
+- [x] Derive a design system from the supplied reference and rebuild every screen on it
+- [x] Build a mascot state system over the three supplied pieces of artwork
+- [x] Replace timed progress with events the engine emits as work genuinely finishes
+- [x] Add a live installation screen and a "partly set up" state with a Repair action
+- [x] Replace the native title bar with an in-app strip, keeping real window controls
+- [x] Playwright interface tests over the whole critical path, wired into CI
+- [x] Visual review of every screen in dark, light and at a narrow window size
 
 ## TODO — next
 
 - [ ] Sign and notarise once certificates exist
-- [ ] Automated interface tests in CI
+- [ ] Confirm macOS desktop-app detection against a real macOS installation
 - [ ] Detect the languages a user actually works in, and offer the matching LSP plugin
 - [ ] Update checking for installed components, with a visible diff of what changed
 - [ ] Path-scoped rules (`.claude/rules/`) for coding guidance, so it loads only near code

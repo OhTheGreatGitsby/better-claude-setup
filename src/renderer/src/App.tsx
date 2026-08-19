@@ -161,7 +161,7 @@ export function App(): ReactNode {
   )
 
   function afterScan(): void {
-    if (scan && !scan.claudeCode.installed) {
+    if (scan && scan.claudeCode.state !== 'installed') {
       setScreen('claude-code')
     } else {
       setScreen('choose')
@@ -240,7 +240,7 @@ export function App(): ReactNode {
             components={components}
             selected={selected}
             installed={installedIds}
-            claudeCodeInstalled={scan?.claudeCode.installed ?? false}
+            claudeCodeInstalled={scan?.claudeCode.state === 'installed'}
             onToggle={toggle}
             onContinue={() => void goToReview()}
             onBack={() => setScreen('choose')}

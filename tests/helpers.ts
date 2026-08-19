@@ -19,8 +19,33 @@ export function makeTempEnv(platform: Env['platform'] = 'linux'): Env {
   }
 }
 
-export async function cleanup(env: Env): Promise<void> {
+export async function cleanup(env: Env | undefined): Promise<void> {
+  if (!env) return
   await fs.rm(env.home, { recursive: true, force: true })
+}
+
+/** An Env whose operating-system queries always come back empty. */
+export function withNoInstalledApps(env: Env): Env {
+  return {
+    ...env,
+    exec: async () => ({ ok: false, exitCode: 1, stdout: '', stderr: '' })
+  }
+}
+
+/** An Env whose operating-system queries return the supplied output. */
+export function withCommandOutput(
+  env: Env,
+  respond: (command: string, args: string[]) => string | null
+): Env {
+  return {
+    ...env,
+    exec: async (command, args) => {
+      const stdout = respond(command, args)
+      return stdout === null
+        ? { ok: false, exitCode: 1, stdout: '', stderr: '' }
+        : { ok: true, exitCode: 0, stdout, stderr: '' }
+    }
+  }
 }
 
 export async function writeFile(env: Env, relPath: string, contents: string): Promise<string> {

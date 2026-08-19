@@ -56,7 +56,7 @@ export function ClaudeCodeStep({
         Claude desktop app also reads.
       </p>
 
-      {!scan.claudeDesktop.installed ? (
+      {scan.claudeDesktop.state !== 'installed' ? (
         <Notice tone="warn">
           The Claude desktop app was not found either. You can install it from Anthropic&apos;s own
           download page. This app will never download Claude for you from anywhere else.

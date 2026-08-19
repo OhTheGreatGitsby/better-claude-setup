@@ -7,11 +7,26 @@ import type { Platform } from '@shared/types'
  * Tests pass a temporary directory, so the developer's real Claude configuration is
  * never used as a test target.
  */
+export interface CommandOutcome {
+  ok: boolean
+  exitCode: number
+  stdout: string
+  stderr: string
+}
+
+export type CommandRunner = (command: string, args: string[]) => Promise<CommandOutcome>
+
 export interface Env {
   home: string
   platform: Platform
   /** Injected so tests can control time deterministically. */
   now: () => Date
+  /**
+   * Optional stand-in for running an operating-system command. Detection asks Windows and
+   * macOS about installed applications, and a test with a fixture home directory would
+   * otherwise get answers from the real machine it happens to be running on.
+   */
+  exec?: CommandRunner
 }
 
 export function realEnv(): Env {

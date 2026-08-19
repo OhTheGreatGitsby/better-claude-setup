@@ -1,8 +1,8 @@
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { release } from 'node:os'
-import type { DetectionResult } from '@shared/types'
-import { claudeHome, claudeMdPath, claudeSettingsPath, desktopConfigDir, skillsDir } from './env'
+import type { ConfigState, DetectedProduct, DetectionProbe, DetectionResult } from '@shared/types'
+import { claudeHome, claudeMdPath, claudeSettingsPath, skillsDir } from './env'
 import type { Env } from './env'
 import { loadJson } from './json-config'
 import { pathExists, readTextIfExists } from './safe-fs'
@@ -10,6 +10,9 @@ import { run } from './exec'
 import { listBackups } from './backup'
 import { loadManifest } from './manifest'
 import { SKILLS } from './content'
+import { detectClaudeDesktop } from './detect-desktop'
+
+export { detectClaudeDesktop }
 
 /**
  * How Claude Code can be launched on this machine.
@@ -21,25 +24,15 @@ import { SKILLS } from './content'
 export interface ClaudeExecutable {
   path: string
   viaCmdShim: boolean
-  foundVia: 'native-install' | 'PATH'
+  foundVia: 'native install' | 'system path'
 }
-
-const WIN_DESKTOP_CANDIDATES = [
-  ['AppData', 'Local', 'AnthropicClaude', 'claude.exe'],
-  ['AppData', 'Local', 'Programs', 'Claude', 'Claude.exe'],
-  ['AppData', 'Local', 'Claude', 'Claude.exe']
-]
-
-const MAC_DESKTOP_CANDIDATES = [['Applications', 'Claude.app']]
-const MAC_SYSTEM_DESKTOP = '/Applications/Claude.app'
-const LINUX_DESKTOP_CANDIDATES = ['/opt/Claude/claude-desktop', '/usr/bin/claude-desktop']
 
 /** Locates the Claude Code executable without modifying anything. */
 export async function findClaudeExecutable(env: Env): Promise<ClaudeExecutable | null> {
   const nativeName = env.platform === 'win32' ? 'claude.exe' : 'claude'
   const nativePath = join(env.home, '.local', 'bin', nativeName)
   if (await pathExists(nativePath)) {
-    return { path: nativePath, viaCmdShim: false, foundVia: 'native-install' }
+    return { path: nativePath, viaCmdShim: false, foundVia: 'native install' }
   }
 
   const locator = env.platform === 'win32' ? 'where.exe' : 'which'
@@ -53,14 +46,14 @@ export async function findClaudeExecutable(env: Env): Promise<ClaudeExecutable |
 
   // Prefer a real executable over a shim, so we can avoid cmd.exe when possible.
   const exe = candidates.find((c) => /\.exe$/i.test(c))
-  if (exe) return { path: exe, viaCmdShim: false, foundVia: 'PATH' }
+  if (exe) return { path: exe, viaCmdShim: false, foundVia: 'system path' }
 
   const shim = candidates.find((c) => /\.(cmd|bat)$/i.test(c))
-  if (shim) return { path: shim, viaCmdShim: true, foundVia: 'PATH' }
+  if (shim) return { path: shim, viaCmdShim: true, foundVia: 'system path' }
 
   const first = candidates[0]
   if (!first) return null
-  return { path: first, viaCmdShim: false, foundVia: 'PATH' }
+  return { path: first, viaCmdShim: false, foundVia: 'system path' }
 }
 
 /** Runs the Claude Code CLI with a fixed argument list. Nothing user-typed reaches here. */
@@ -76,55 +69,38 @@ export async function runClaude(
   return run(env, exe.path, args, { timeoutMs })
 }
 
-export async function detectClaudeCodeVersion(env: Env): Promise<{
-  installed: boolean
-  version: string | null
-  foundVia: string | null
-}> {
+export async function detectClaudeCode(env: Env): Promise<DetectedProduct> {
+  const probes: DetectionProbe[] = []
   const exe = await findClaudeExecutable(env)
-  if (!exe) return { installed: false, version: null, foundVia: null }
 
-  const result = await runClaude(env, exe, ['--version'], 20_000)
-  if (!result.ok) return { installed: true, version: null, foundVia: exe.foundVia }
-
-  // Output looks like "2.1.232 (Claude Code)".
-  const match = result.stdout.match(/\b(\d+\.\d+\.\d+)\b/)
-  return { installed: true, version: match?.[1] ?? null, foundVia: exe.foundVia }
-}
-
-export async function detectClaudeDesktop(
-  env: Env
-): Promise<{ installed: boolean; configDirExists: boolean }> {
-  const configDirExists = await pathExists(desktopConfigDir(env))
-
-  let installed = false
-  if (env.platform === 'win32') {
-    for (const parts of WIN_DESKTOP_CANDIDATES) {
-      if (await pathExists(join(env.home, ...parts))) {
-        installed = true
-        break
-      }
-    }
-  } else if (env.platform === 'darwin') {
-    if (await pathExists(MAC_SYSTEM_DESKTOP)) installed = true
-    if (!installed) {
-      for (const parts of MAC_DESKTOP_CANDIDATES) {
-        if (await pathExists(join(env.home, ...parts))) {
-          installed = true
-          break
-        }
-      }
-    }
-  } else {
-    for (const candidate of LINUX_DESKTOP_CANDIDATES) {
-      if (await pathExists(candidate)) {
-        installed = true
-        break
-      }
-    }
+  if (!exe) {
+    probes.push({ method: 'Command line tool', found: false, note: 'Not on the system path' })
+    return { state: 'not-found', version: null, foundVia: null, location: null, probes }
   }
 
-  return { installed, configDirExists }
+  probes.push({
+    method: 'Command line tool',
+    found: true,
+    note: exe.foundVia === 'native install' ? 'Installed for your user' : 'Found on the system path'
+  })
+
+  const result = await runClaude(env, exe, ['--version'], 20_000)
+  // Output looks like "2.1.232 (Claude Code)".
+  const version = result.ok ? (result.stdout.match(/\b(\d+\.\d+\.\d+)\b/)?.[1] ?? null) : null
+
+  probes.push({
+    method: 'Version check',
+    found: Boolean(version),
+    note: version ? `Reported ${version}` : 'The program did not report a version'
+  })
+
+  return {
+    state: 'installed',
+    version,
+    foundVia: exe.foundVia === 'native install' ? 'User installation' : 'System path',
+    location: exe.foundVia === 'native install' ? 'Installed for your user' : 'On the system path',
+    probes
+  }
 }
 
 /** Skill directories present that this app did not create. */
@@ -140,31 +116,93 @@ export async function listForeignSkills(env: Env): Promise<string[]> {
 }
 
 /**
+ * Confirms that what the manifest claims is installed is actually still on disk. A user
+ * who deleted a skill folder by hand should see "partly set up", not a clean bill of health.
+ */
+async function checkInstalledArtifacts(
+  env: Env,
+  appVersion: string
+): Promise<{ present: string[]; missing: string[] }> {
+  const manifest = await loadManifest(env, appVersion)
+  const present: string[] = []
+  const missing: string[] = []
+
+  for (const record of manifest.components) {
+    let intact = true
+    for (const artifact of record.artifacts) {
+      if (artifact.type === 'skill-dir') {
+        const name = artifact.relPath.replace(/^skills\//, '')
+        if (!(await pathExists(join(skillsDir(env), name, 'SKILL.md')))) intact = false
+      }
+      if (artifact.type === 'claude-md-block') {
+        const text = await readTextIfExists(claudeMdPath(env))
+        if (!text || !text.includes(`better-claude-setup:${artifact.blockId}`)) intact = false
+      }
+    }
+    if (intact) present.push(record.componentId)
+    else missing.push(record.componentId)
+  }
+
+  return { present, missing }
+}
+
+function configState(present: string[], missing: string[]): ConfigState {
+  if (present.length === 0 && missing.length === 0) return 'not-configured'
+  if (missing.length > 0) return 'partial'
+  return 'configured'
+}
+
+/**
  * Reads the machine's current state. This function only reads; it creates no files and
  * changes no settings, so it is safe to run before the user has agreed to anything.
+ *
+ * `onStep` reports each stage as it genuinely finishes, so the interface can show real
+ * progress rather than a timed animation.
  */
-export async function scanSystem(env: Env, appVersion: string): Promise<DetectionResult> {
+export async function scanSystem(
+  env: Env,
+  appVersion: string,
+  onStep?: (step: string) => void
+): Promise<DetectionResult> {
   const home = claudeHome(env)
-  const [claudeCode, claudeDesktop, settings, claudeMd, otherSkills, manifest, backups] =
-    await Promise.all([
-      detectClaudeCodeVersion(env),
-      detectClaudeDesktop(env),
-      loadJson(claudeSettingsPath(env)),
-      readTextIfExists(claudeMdPath(env)),
-      listForeignSkills(env),
-      loadManifest(env, appVersion),
-      listBackups(env)
-    ])
+  const step = (name: string): void => onStep?.(name)
+
+  step('system')
+  const platformInfo = { arch: process.arch, osRelease: release() }
+
+  step('claude-code')
+  const claudeCode = await detectClaudeCode(env)
+
+  step('claude-desktop')
+  const claudeDesktop = await detectClaudeDesktop(env)
+
+  step('configuration')
+  const [settings, claudeMd, otherSkills, homeExists] = await Promise.all([
+    loadJson(claudeSettingsPath(env)),
+    readTextIfExists(claudeMdPath(env)),
+    listForeignSkills(env),
+    pathExists(home)
+  ])
+
+  step('better-claude-setup')
+  const [{ present, missing }, backups, manifest] = await Promise.all([
+    checkInstalledArtifacts(env, appVersion),
+    listBackups(env),
+    loadManifest(env, appVersion)
+  ])
+
+  step('done')
 
   return {
     platform: env.platform,
-    arch: process.arch,
-    osRelease: release(),
+    arch: platformInfo.arch,
+    osRelease: platformInfo.osRelease,
     claudeHome: home,
-    claudeHomeExists: await pathExists(home),
+    claudeHomeExists: homeExists,
     claudeCode,
     claudeDesktop,
     existingConfig: {
+      found: homeExists,
       settingsJsonExists: settings.exists,
       settingsJsonValid: settings.valid,
       settingsJsonError: settings.error,
@@ -173,8 +211,10 @@ export async function scanSystem(env: Env, appVersion: string): Promise<Detectio
       otherSkills
     },
     betterClaudeSetup: {
-      everInstalled: manifest.components.length > 0,
-      installedComponentIds: manifest.components.map((c) => c.componentId),
+      state: configState(present, missing),
+      everInstalled: present.length + missing.length > 0,
+      installedComponentIds: present,
+      missingComponentIds: missing,
       manifestVersion: manifest.components.length > 0 ? manifest.appVersion : null,
       lastRunIso: manifest.components.length > 0 ? manifest.updatedAtIso : null,
       backupCount: backups.length

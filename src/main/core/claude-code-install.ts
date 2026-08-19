@@ -1,7 +1,7 @@
 import type { OperationResult, StepResult } from '@shared/types'
 import type { Env } from './env'
 import { run } from './exec'
-import { detectClaudeCodeVersion } from './detect'
+import { detectClaudeCode } from './detect'
 import { log } from './logger'
 
 /**
@@ -121,18 +121,18 @@ export async function installClaudeCode(env: Env): Promise<OperationResult> {
   })
 
   // Trust the verification, not the installer's exit code.
-  const verified = await detectClaudeCodeVersion(env)
+  const verified = await detectClaudeCode(env)
   steps.push({
     id: 'verify-claude-code',
     label: 'Check that Claude Code now runs',
-    status: verified.installed && verified.version ? 'done' : 'failed',
+    status: verified.state === 'installed' && verified.version ? 'done' : 'failed',
     message:
-      verified.installed && verified.version
+      verified.state === 'installed' && verified.version
         ? `Claude Code ${verified.version} is installed.`
         : 'Claude Code still does not answer when asked for its version. You may need to close and reopen this app, or restart your computer, so the new program is found.'
   })
 
-  const ok = verified.installed && Boolean(verified.version)
+  const ok = verified.state === 'installed' && Boolean(verified.version)
   return {
     ok,
     steps,

@@ -79,23 +79,50 @@ export interface InstallPlan {
   alreadyInstalled: string[]
 }
 
+/**
+ * How confident the app is that a product is present.
+ *
+ * "uncertain" is a real, separate answer: on Windows a leftover configuration folder
+ * proves the app ran here once, but not that it is still installed. Reporting that as
+ * either "installed" or "not found" would be a guess presented as a fact.
+ */
+export type DetectionState = 'installed' | 'not-found' | 'uncertain'
+
+/** A single detection route that was tried, and what it found. */
+export interface DetectionProbe {
+  /** Human-readable route name, e.g. "Windows app packages". */
+  method: string
+  found: boolean
+  /** Privacy-safe note. Never a full home directory path. */
+  note: string
+}
+
+export interface DetectedProduct {
+  state: DetectionState
+  version: string | null
+  /** The route that produced the answer, for the detection details panel. */
+  foundVia: string | null
+  /** Privacy-safe location description, e.g. "Windows app packages". */
+  location: string | null
+  /** Every route tried, in order. Shown under "Detection details". */
+  probes: DetectionProbe[]
+}
+
+export type ConfigState = 'configured' | 'partial' | 'not-configured'
+
 export interface DetectionResult {
   platform: Platform
   arch: string
   osRelease: string
   claudeHome: string
   claudeHomeExists: boolean
-  claudeCode: {
-    installed: boolean
-    version: string | null
-    /** How Claude Code was found, e.g. "PATH". Never contains a home directory path. */
-    foundVia: string | null
-  }
-  claudeDesktop: {
-    installed: boolean
-    configDirExists: boolean
-  }
+  /** The Claude Code command line tool. */
+  claudeCode: DetectedProduct
+  /** The Claude desktop application. */
+  claudeDesktop: DetectedProduct
   existingConfig: {
+    /** Whether a Claude Code configuration directory was found at all. */
+    found: boolean
     settingsJsonExists: boolean
     settingsJsonValid: boolean
     settingsJsonError: string | null
@@ -105,8 +132,11 @@ export interface DetectionResult {
     otherSkills: string[]
   }
   betterClaudeSetup: {
+    state: ConfigState
     everInstalled: boolean
     installedComponentIds: string[]
+    /** Components recorded in the manifest whose files are missing from disk. */
+    missingComponentIds: string[]
     manifestVersion: string | null
     lastRunIso: string | null
     backupCount: number

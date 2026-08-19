@@ -54,16 +54,16 @@ export function SystemScan({
           {PLATFORM_NAMES[scan.platform] ?? scan.platform} ({scan.arch})
         </Row>
         <Row label="Claude desktop app">
-          {scan.claudeDesktop.installed ? (
+          {scan.claudeDesktop.state === 'installed' ? (
             <Pill tone="ok">Installed</Pill>
-          ) : scan.claudeDesktop.configDirExists ? (
+          ) : scan.claudeDesktop.state === 'uncertain' ? (
             <Pill tone="warn">Used before, not found now</Pill>
           ) : (
             <Pill tone="off">Not found</Pill>
           )}
         </Row>
         <Row label="Claude Code">
-          {scan.claudeCode.installed ? (
+          {scan.claudeCode.state === 'installed' ? (
             <Pill tone="ok">{scan.claudeCode.version ?? 'Installed'}</Pill>
           ) : (
             <Pill tone="off">Not installed</Pill>

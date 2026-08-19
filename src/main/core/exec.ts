@@ -31,6 +31,14 @@ export async function run(
     if (arg.includes('\0')) throw new Error('Command argument contains a NUL byte.')
   }
 
+  if (env.exec) {
+    const outcome = await env.exec(command, args)
+    return {
+      ...outcome,
+      safeOutput: sanitize([outcome.stdout, outcome.stderr].filter(Boolean).join('\n').trim(), env)
+    }
+  }
+
   const execOptions: ExecFileOptions = {
     timeout: options.timeoutMs ?? 60_000,
     cwd: options.cwd,

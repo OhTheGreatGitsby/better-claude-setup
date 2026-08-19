@@ -44,14 +44,14 @@ export function Manager({
 
       <Card>
         <Row label="Claude desktop app">
-          {scan.claudeDesktop.installed ? (
+          {scan.claudeDesktop.state === 'installed' ? (
             <Pill tone="ok">Installed</Pill>
           ) : (
             <Pill tone="off">Not found</Pill>
           )}
         </Row>
         <Row label="Claude Code">
-          {scan.claudeCode.installed ? (
+          {scan.claudeCode.state === 'installed' ? (
             <Pill tone="ok">{scan.claudeCode.version ?? 'Installed'}</Pill>
           ) : (
             <Pill tone="off">Not installed</Pill>

@@ -11,6 +11,7 @@ import type {
   StepResult
 } from '@shared/types'
 import { Mascot } from './components/Mascot'
+import logo from './assets/logo.png'
 import { Notice, Track } from './components/kit'
 import { Welcome } from './screens/Welcome'
 import { Explain } from './screens/Explain'
@@ -210,9 +211,11 @@ export function App(): ReactNode {
   return (
     <div className="app" data-platform={platform}>
       <header className="titlebar">
-        <span className="titlebar__mark" aria-hidden="true">
-          ⌃
-        </span>
+        <span
+          className="titlebar__mark"
+          style={{ backgroundImage: `url(${logo})` }}
+          aria-hidden="true"
+        />
         <span className="titlebar__name">Better Claude Setup</span>
         <span className="titlebar__spacer" />
         <span className="titlebar__meta">

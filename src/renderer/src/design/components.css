@@ -32,16 +32,19 @@
 }
 
 .titlebar__mark {
-  width: 16px;
-  height: 16px;
-  background: var(--accent);
-  border-radius: var(--r-xs);
-  display: grid;
-  place-items: center;
-  color: var(--accent-ink);
-  font-size: 9px;
-  font-weight: 800;
+  width: 20px;
+  height: 20px;
   flex: none;
+  border-radius: var(--r-xs);
+  /*
+   * The logo is drawn with generous margins, which read as an empty square at this size,
+   * so the mark zooms into the artwork itself. The image already carries its own
+   * background, so a hairline separates it from the strip behind it.
+   */
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 205%;
+  box-shadow: 0 0 0 1px var(--line);
 }
 
 .titlebar__name {

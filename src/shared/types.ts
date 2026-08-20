@@ -110,6 +110,35 @@ export interface DetectedProduct {
 
 export type ConfigState = 'configured' | 'partial' | 'not-configured'
 
+/**
+ * The state of the Claude account surface, which is a separate thing from the local
+ * Claude Code setup and is deliberately never described as "detected".
+ *
+ *   not-set-up        no packages built, nothing confirmed
+ *   prepared          packages built, waiting for the user to upload them
+ *   confirmed         the user says they finished the upload
+ *   update-available  the skills changed since the user last confirmed
+ */
+export type ChatSkillsStatus = 'not-set-up' | 'prepared' | 'confirmed' | 'update-available'
+
+export interface ChatSkillSummary {
+  id: string
+  command: string
+  title: string
+  description: string
+  fileName: string
+}
+
+export interface ChatSkillsState {
+  state: ChatSkillsStatus
+  /** When the user confirmed they uploaded these. Their word, not a detection. */
+  confirmedAtIso: string | null
+  packageDirExists: boolean
+  currentHash: string
+  confirmedHash: string | null
+  skills: ChatSkillSummary[]
+}
+
 export interface DetectionResult {
   platform: Platform
   arch: string
@@ -131,6 +160,7 @@ export interface DetectionResult {
     /** Skill directory names already present, excluding ours. */
     otherSkills: string[]
   }
+  chatSkills: ChatSkillsState
   betterClaudeSetup: {
     state: ConfigState
     everInstalled: boolean

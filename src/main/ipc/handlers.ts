@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import type {
   AppInfo,
   BackupRecord,
+  ChatSkillsState,
   DetectionResult,
   InstallPlan,
   OperationResult
@@ -16,6 +17,14 @@ import { scanSystem } from '../core/detect'
 import { appStateDir, claudeHome, realEnv } from '../core/env'
 import type { Env } from '../core/env'
 import { chooseInstallRoute, describeRoute, installClaudeCode } from '../core/claude-code-install'
+import {
+  buildChatPackages,
+  chatPackageDir,
+  chatSkillIdsFor,
+  clearChatSetup,
+  confirmChatSetup,
+  readChatSkillsState
+} from '../core/chat-skills'
 import {
   buildPlan,
   installComponents,
@@ -137,6 +146,52 @@ export function registerIpcHandlers(): void {
     if (result.canceled || !result.filePath) return { saved: false }
     await fs.writeFile(result.filePath, report, 'utf8')
     return { saved: true, path: result.filePath }
+  })
+
+  // ---- Claude account skills -------------------------------------------------------
+  // None of these touch the user's Claude account. They build upload packages from local
+  // content, open a folder, and record what the user tells us they did.
+
+  ipcMain.handle(CHANNELS.chatSkillsState, async (): Promise<ChatSkillsState> => {
+    const manifest = await loadManifest(env, appVersion())
+    return readChatSkillsState(
+      env,
+      manifest.components.map((c) => c.componentId)
+    )
+  })
+
+  ipcMain.handle(
+    CHANNELS.chatSkillsPrepare,
+    async (): Promise<{ directory: string; files: string[] }> => {
+      const manifest = await loadManifest(env, appVersion())
+      const skillIds = chatSkillIdsFor(manifest.components.map((c) => c.componentId))
+      const built = await buildChatPackages(env, skillIds)
+      await log(env, 'info', `Prepared ${built.files.length} chat skill packages`)
+      return built
+    }
+  )
+
+  ipcMain.handle(CHANNELS.chatSkillsConfirm, async (): Promise<ChatSkillsState> => {
+    const manifest = await loadManifest(env, appVersion())
+    const componentIds = manifest.components.map((c) => c.componentId)
+    await confirmChatSetup(env, chatSkillIdsFor(componentIds))
+    return readChatSkillsState(env, componentIds)
+  })
+
+  ipcMain.handle(CHANNELS.chatSkillsReset, async (): Promise<ChatSkillsState> => {
+    const manifest = await loadManifest(env, appVersion())
+    const componentIds = manifest.components.map((c) => c.componentId)
+    await clearChatSetup(env)
+    return readChatSkillsState(env, componentIds)
+  })
+
+  ipcMain.handle(CHANNELS.chatSkillsReveal, async (): Promise<boolean> => {
+    try {
+      await shell.openPath(chatPackageDir(env))
+      return true
+    } catch {
+      return false
+    }
   })
 
   ipcMain.handle(CHANNELS.openExternal, async (_event, url: unknown): Promise<boolean> => {

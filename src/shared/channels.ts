@@ -17,6 +17,12 @@ export const CHANNELS = {
   diagnostics: 'diagnostics:build',
   saveDiagnostics: 'diagnostics:save',
   openExternal: 'shell:open-external',
+  chatSkillsState: 'chat:state',
+  chatSkillsPrepare: 'chat:prepare',
+  chatSkillsConfirm: 'chat:confirm',
+  chatSkillsReset: 'chat:reset',
+  chatSkillsReveal: 'chat:reveal',
+  windowState: 'window:state',
   scanProgress: 'system:scan-progress',
   installProgress: 'install:progress',
   revealConfig: 'shell:reveal'

@@ -76,7 +76,10 @@ test('the whole setup path works end to end', async ({ window, home }) => {
   // --- manager ------------------------------------------------------------------
   await window.getByRole('button', { name: /open setup manager/i }).click()
   await expect(window.getByRole('heading', { name: /your claude setup/i })).toBeVisible()
-  await expect(window.getByText(/everything looks good/i)).toBeVisible()
+  // Claude Code is set up but the account surface is not, and the manager says so
+  // specifically rather than calling the whole thing "active".
+  await expect(window.getByText(/still needs setting up/i)).toBeVisible()
+  await expect(window.getByText(/claude chat & web/i).first()).toBeVisible()
 
   // --- disable one component ----------------------------------------------------
   const writingSwitch = window.getByRole('switch', { name: /writing and editing: enabled/i })
@@ -96,7 +99,10 @@ test('the whole setup path works end to end', async ({ window, home }) => {
   await window.getByRole('button', { name: /restore original setup/i }).click()
   await window.getByRole('button', { name: /yes, restore that version/i }).click()
 
-  await expect(window.getByText(/not set up yet/i).first()).toBeVisible({ timeout: 30_000 })
+  // The Claude Code surface goes back to offering setup rather than reporting it done.
+  await expect(window.getByRole('button', { name: /set up claude code/i })).toBeVisible({
+    timeout: 30_000
+  })
 
   // The fixture home is back exactly as it started.
   expect(home.readClaudeMd()).toBe('# My own notes\n\nAlways run make test.\n')
@@ -182,5 +188,40 @@ test.describe('when Claude Code is not installed', () => {
       timeout: 30_000
     })
     expect(home.hasSkill('write')).toBe(true)
+  })
+})
+
+test.describe('the Claude account surface', () => {
+  test('is offered separately, and is never claimed to be detected', async ({ window, home }) => {
+    await window.getByRole('button', { name: /set up claude/i }).click()
+    await continuePastScan(window)
+    await window.getByRole('button', { name: /use recommended/i }).click()
+    await window.getByRole('button', { name: /approve and set up/i }).click()
+    await expect(window.getByRole('heading', { name: /claude is ready/i })).toBeVisible({
+      timeout: 30_000
+    })
+
+    await window.getByRole('button', { name: /set up claude chat skills/i }).click()
+    await expect(
+      window.getByRole('heading', { name: /use these skills in ordinary claude chats/i })
+    ).toBeVisible()
+
+    // The wording must never imply the app can see into a Claude account.
+    await expect(window.getByText(/cannot see inside your claude account/i)).toBeVisible()
+
+    // Confirming is only possible once the packages exist.
+    const confirm = window.getByRole('button', { name: /i have uploaded them/i })
+    await expect(confirm).toBeDisabled()
+
+    await window.getByRole('button', { name: /prepare files/i }).click()
+    await expect(confirm).toBeEnabled({ timeout: 30_000 })
+
+    // Real archives, on disk, one per skill.
+    const packaged = home.listChatPackages()
+    expect(packaged).toContain('research.zip')
+    expect(packaged).toContain('HOW-TO-INSTALL.txt')
+
+    await confirm.click()
+    await expect(window.getByText(/marked as done by you/i)).toBeVisible({ timeout: 30_000 })
   })
 })

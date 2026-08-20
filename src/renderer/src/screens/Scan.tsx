@@ -19,7 +19,8 @@ const STAGES = [
   { id: 'claude-code', icon: '›_', label: 'Claude Code' },
   { id: 'claude-desktop', icon: '◱', label: 'Claude desktop app' },
   { id: 'configuration', icon: '⚙', label: 'Existing Claude settings' },
-  { id: 'better-claude-setup', icon: '◈', label: 'Better Claude Setup' }
+  { id: 'better-claude-setup', icon: '◈', label: 'Better Claude Setup' },
+  { id: 'chat-skills', icon: '◇', label: 'Claude Chat & Web' }
 ] as const
 
 const PLATFORM_NAMES: Record<string, string> = {
@@ -230,6 +231,38 @@ export function Scan({
             )
           }
           appear={stagesDone.includes('better-claude-setup')}
+        />
+
+        <DataRow
+          icon={STAGES[5].icon}
+          label="Claude Chat &amp; Web"
+          sub={
+            scan && stagesDone.includes('chat-skills')
+              ? scan.chatSkills.state === 'confirmed'
+                ? 'You have set these up in your Claude account.'
+                : scan.chatSkills.state === 'update-available'
+                  ? 'Set up, but the skills have changed since you uploaded them.'
+                  : 'Not set up yet. The same skills can work in ordinary Claude chats.'
+              : 'Checking…'
+          }
+          end={
+            scan && stagesDone.includes('chat-skills') ? (
+              scan.chatSkills.state === 'confirmed' ? (
+                <Badge tone="ok" dot>
+                  Ready
+                </Badge>
+              ) : scan.chatSkills.state === 'update-available' ? (
+                <Badge tone="warn" dot>
+                  Update available
+                </Badge>
+              ) : (
+                <Badge dot>Setup needed</Badge>
+              )
+            ) : (
+              <Badge>…</Badge>
+            )
+          }
+          appear={stagesDone.includes('chat-skills')}
         />
 
         {scan && !running ? (

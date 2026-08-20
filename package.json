@@ -1,7 +1,7 @@
 {
   "name": "better-claude-setup",
-  "version": "1.1.0",
-  "description": "An independent, open-source desktop app that safely configures Claude Code and Claude Desktop for beginners.",
+  "version": "1.2.0",
+  "description": "Beginner-friendly setup manager for Claude Code and Claude Chat: smarter defaults, reusable skills, backups and one-click rollback on Windows and macOS.",
   "private": true,
   "license": "MIT",
   "author": "KC8 — OhTheGreatGitsby",

@@ -16,19 +16,55 @@
 }
 
 /*
- * The window's own title bar is hidden, so this strip is both the app's identity and the
- * drag handle. Interactive children opt out of dragging individually.
+ * The title strip, and the native-control exclusion area.
+ *
+ * The window's own title bar is hidden and the operating system draws its controls on
+ * top of this strip, so the strip must never place content underneath them. Version 1.1
+ * used a fixed left padding on macOS and nothing at all on Windows, which put the status
+ * text under the close button at some window widths and display scales.
+ *
+ * Windows publishes the exact overlay geometry to CSS as env(titlebar-area-*). Those
+ * values already account for display scaling and for the controls growing or shrinking,
+ * so they are the only correct source; a hand-picked pixel margin cannot be.
+ *
+ * macOS does not publish those variables for an inset title bar, but its traffic lights
+ * sit at a known inset and vanish in fullscreen, which the main process reports.
  */
 .titlebar {
   -webkit-app-region: drag;
+  position: relative;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  z-index: 3;
+}
+
+.titlebar__inner {
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  padding: 0 var(--s-4);
-  background: var(--surface-2);
-  border-bottom: 1px solid var(--line);
-  position: relative;
-  z-index: 3;
+  height: 100%;
+  box-sizing: border-box;
+  /* Default for a platform that publishes nothing: assume controls on the right. */
+  padding-left: var(--titlebar-inset-left, var(--s-4));
+  padding-right: var(--titlebar-inset-right, 140px);
+}
+
+/* Windows: sit exactly inside the region the overlay leaves free. */
+.app[data-platform='win32'] .titlebar__inner {
+  padding-left: calc(env(titlebar-area-x, 0px) + var(--s-4));
+  padding-right: calc(
+    100% - env(titlebar-area-width, 100%) - env(titlebar-area-x, 0px) + var(--s-3)
+  );
+}
+
+/* macOS: clear the traffic lights, which are not present in fullscreen. */
+.app[data-platform='darwin'] .titlebar__inner {
+  padding-left: 84px;
+  padding-right: var(--s-4);
+}
+
+.app[data-platform='darwin'][data-fullscreen='true'] .titlebar__inner {
+  padding-left: var(--s-4);
 }
 
 .titlebar__mark {
@@ -38,38 +74,42 @@
   border-radius: var(--r-xs);
   /*
    * The logo is drawn with generous margins, which read as an empty square at this size,
-   * so the mark zooms into the artwork itself. The image already carries its own
-   * background, so a hairline separates it from the strip behind it.
+   * so the mark uses a version cropped to the artwork itself.
    */
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 205%;
+  background-size: cover;
   box-shadow: 0 0 0 1px var(--line);
 }
 
 .titlebar__name {
-  font-family: var(--font-mono);
-  font-size: var(--t-label);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  font-weight: 700;
+  font-size: var(--t-small);
+  font-weight: 600;
   color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .titlebar__spacer {
   flex: 1;
+  min-width: var(--s-3);
 }
 
 .titlebar__meta {
   font-family: var(--font-mono);
-  font-size: var(--t-micro);
-  letter-spacing: 0.06em;
+  font-size: var(--t-label);
+  letter-spacing: 0.05em;
   color: var(--ink-3);
+  white-space: nowrap;
+  flex: none;
 }
 
-/* macOS puts its traffic lights at the left, so the content shifts right to clear them. */
-.app[data-platform='darwin'] .titlebar {
-  padding-left: 78px;
+/* Below this width the status label would crowd the name; the name wins. */
+@media (max-width: 560px) {
+  .titlebar__meta {
+    display: none;
+  }
 }
 
 .app__body {
@@ -165,11 +205,14 @@
 }
 
 .panel__title {
-  font-family: var(--font-mono);
-  font-size: var(--t-label);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  font-weight: 700;
+  /*
+   * These were uppercase monospace on every panel, which made a settings screen read like
+   * a log. Monospace is now reserved for values that really are machine output: versions,
+   * paths, hashes and detection routes.
+   */
+  font-size: var(--t-body);
+  font-weight: 600;
+  letter-spacing: -0.005em;
   color: var(--ink);
 }
 
@@ -240,6 +283,72 @@
   width: 34px;
   height: 34px;
   font-size: 16px;
+}
+
+/* A numbered step marker, used where an ordered sequence needs to read as ordered. */
+.step-number {
+  font-family: var(--font-mono);
+  font-size: var(--t-small);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ---------- surface cards: the two places Claude can be set up ---------- */
+
+.surface-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  background: var(--surface);
+}
+
+.surface-card[data-tone='ok'] {
+  border-color: var(--ok-line);
+  background: var(--ok-soft);
+}
+
+.surface-card[data-tone='warn'] {
+  border-color: var(--warn-line);
+  background: var(--warn-soft);
+}
+
+.surface-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.surface-card__title {
+  font-size: var(--t-lead);
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+
+/* A quiet row of facts, for places that do not need a bordered card each. */
+.plain-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.plain-item {
+  display: flex;
+  gap: var(--s-3);
+  align-items: flex-start;
+}
+
+.plain-item__icon {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 /* ---------- buttons ---------- */

@@ -254,6 +254,7 @@ describe('system scan', () => {
       'claude-desktop',
       'configuration',
       'better-claude-setup',
+      'chat-skills',
       'done'
     ])
   })

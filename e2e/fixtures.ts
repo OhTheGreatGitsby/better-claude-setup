@@ -1,4 +1,12 @@
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { test as base, _electron as electron } from '@playwright/test'
@@ -17,6 +25,7 @@ export interface FixtureHome {
   readClaudeMd: () => string | null
   hasSkill: (name: string) => boolean
   listSkills: () => string[]
+  listChatPackages: () => string[]
 }
 
 export function createFixtureHome(): FixtureHome {
@@ -48,11 +57,15 @@ export function createFixtureHome(): FixtureHome {
       return existsSync(path) ? readFileSync(path, 'utf8') : null
     },
     hasSkill: (name) => existsSync(join(claudeDir, 'skills', name, 'SKILL.md')),
+    listChatPackages: () => {
+      const dir = join(claudeDir, 'better-claude-setup', 'chat-skills')
+      if (!existsSync(dir)) return []
+      return readdirSync(dir).sort()
+    },
     listSkills: () => {
       const dir = join(claudeDir, 'skills')
       if (!existsSync(dir)) return []
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      return require('node:fs').readdirSync(dir).sort() as string[]
+      return readdirSync(dir).sort()
     }
   }
 }

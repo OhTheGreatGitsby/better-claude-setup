@@ -267,6 +267,71 @@ guidance.
 - **Managed settings.** They require administrator rights and cannot be overridden by the
   user — the opposite of this app's reversibility promise.
 
+## 9. Claude account skills (verified 20 August 2026)
+
+The v1.1 conclusion — that ordinary Claude chats could not use these skills — is **no longer
+correct**, and the product changed accordingly.
+
+From the platform documentation on Agent Skills:
+
+> "Custom Skills: Upload your own Skills as zip files through Settings > Features.
+> Available on Pro, Max, Team, and Enterprise plans with code execution enabled. Custom
+> Skills are individual to each user."
+
+And, decisively for the architecture:
+
+> "Custom Skills do not sync across surfaces. Skills uploaded to one surface are not
+> automatically available on others... Claude Code Skills are filesystem-based and separate
+> from both claude.ai and API."
+
+| Question | Answer |
+| --- | --- |
+| Upload format | A zip whose root contains the skill folder, e.g. `research/SKILL.md` |
+| Where | Settings then Skills on the web; **Customize** in the desktop app sidebar |
+| Plans | Pro, Max, Team, Enterprise. The help centre also lists Free; the platform docs do not, so Free is treated as unconfirmed |
+| Prerequisite | Code execution and file creation enabled |
+| Name rules | 64 chars max, lowercase/digits/hyphens, and may not contain "claude" or "anthropic" |
+| Description limit | **200 characters** per the help centre, against Claude Code's far looser listing budget. The tighter limit is what this project builds to |
+| Sharing | Per user. No organisation-wide management on claude.ai |
+| Cowork | Loads "the skills enabled for your claude.ai account", so the account upload covers it |
+| Consumer install API | **None.** The Skills API serves API workspaces, not personal accounts |
+
+**Invocation.** The help centre says skills in Claude chats "work automatically based on
+context... You don't need to explicitly invoke them"; the `/` menu is documented for the
+Microsoft 365 add-ins, not for the chat surface. There is no slash-command menu to hook into.
+
+What does work, and what this project relies on, is that Claude matches a request against
+each skill's **description**. Every Better Claude skill therefore names its own command in
+its description, so typing `/research something` matches the research skill. That is a
+legitimate use of the documented mechanism rather than a claim of platform support, and the
+app says exactly that on its chat setup screen.
+
+**Consequence for the product:** two surfaces, one canonical content source, per-surface
+exports, and a guided manual upload rather than any form of account automation.
+
+## 10. macOS packaging (verified 20 August 2026)
+
+v1.1 shipped a macOS build that a real Apple Silicon Mac refused with "is damaged and can't
+be opened". The cause was in electron-builder's own schema for `mac.identity`:
+
+> "Not set (default): electron-builder searches the keychain for a valid signing
+> certificate. If none is found, signing is skipped for all architectures — there is no
+> automatic ad-hoc fallback."
+
+The config left `identity` unset and CI additionally passed `CSC_IDENTITY_AUTO_DISCOVERY`
+false, so the app shipped with **no signature at all**, which Apple Silicon will not
+execute. `hardenedRuntime: true` made it worse; the schema warns that with ad-hoc signing it
+"enforces library validation which will reject pre-signed Electron frameworks".
+
+Fix: `identity: "-"` for explicit ad-hoc signing, `hardenedRuntime: false`,
+`notarize: false`, `dmg.sign: false`, and a verification script CI runs on every macOS build.
+
+Measured on a macOS arm64 runner after the fix: `Signature=adhoc`, deep verification passes
+including nested frameworks, a quarantined copy is no longer judged damaged, and the process
+starts and stays alive. Gatekeeper still rejects the build, which is expected and
+unavoidable without notarization.
+
+
 ## 8. Sources
 
 All verified 18 August 2026.
@@ -282,3 +347,11 @@ All verified 18 August 2026.
 - https://code.claude.com/docs/en/desktop-quickstart
 - https://github.com/anthropics/claude-plugins-official
 - https://support.claude.com/en/articles/10185728-understanding-claude-s-personalization-features
+
+Added 20 August 2026:
+
+- https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview
+- https://support.claude.com/en/articles/12512180-using-skills-in-claude
+- https://support.claude.com/en/articles/12512198-creating-custom-skills
+- https://code.claude.com/docs/en/commands
+- https://www.electron.build/docs/mac/

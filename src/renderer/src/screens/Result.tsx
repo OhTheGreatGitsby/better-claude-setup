@@ -18,6 +18,7 @@ export function Result({
   components,
   installedIds,
   onDone,
+  onChatSetup,
   onRetry,
   onUndo,
   busy
@@ -26,6 +27,7 @@ export function Result({
   components: ComponentMeta[]
   installedIds: string[]
   onDone: () => void
+  onChatSetup: () => void
   onRetry: () => void
   onUndo: () => void
   busy: boolean
@@ -136,12 +138,27 @@ export function Result({
           />
         </Panel>
 
+        <Panel accent raised>
+          <PanelHeader icon="→" tone="accent" title="One more thing, if you want it" />
+          <PanelBody>
+            <p className="body" style={{ marginBottom: 'var(--s-3)' }}>
+              That covers Claude Code. The same skills can also work in ordinary Claude
+              conversations — on the web, in the desktop app and in Cowork — but Claude keeps
+              account skills somewhere this app cannot reach, so that part takes one short manual
+              step.
+            </p>
+            <Button variant="primary" onClick={onChatSetup}>
+              Set up Claude Chat skills
+            </Button>
+          </PanelBody>
+        </Panel>
+
         <Panel sunken>
-          <PanelHeader icon="→" title="What to do next" />
+          <PanelHeader icon="→" title="Using it in Claude Code" />
           <PanelBody>
             <p className="body" style={{ marginBottom: 'var(--s-2)' }}>
-              Start a new Claude conversation so it picks up the new instructions. Your new skills
-              appear when you type <code>/</code>.
+              Start a new Claude Code conversation so it picks up the new instructions. Your new
+              skills appear when you type <code>/</code> — try <code>/research</code>.
             </p>
             <p className="small muted">
               Reopen Better Claude Setup at any time to change, disable or restore anything.
@@ -159,7 +176,7 @@ export function Result({
       </div>
 
       <div className="cluster" style={{ marginTop: 'var(--s-6)' }}>
-        <Button variant="primary" size="lg" bracket onClick={onDone}>
+        <Button variant="secondary" size="lg" onClick={onDone}>
           Open setup manager
         </Button>
       </div>

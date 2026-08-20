@@ -46,9 +46,11 @@ pre,
   background-image:
     linear-gradient(to right, var(--line) 1px, transparent 1px),
     linear-gradient(to bottom, var(--line) 1px, transparent 1px);
-  background-size: 32px 32px;
-  opacity: 0.35;
-  mask-image: radial-gradient(ellipse 120% 80% at 50% 0%, #000 20%, transparent 78%);
+  background-size: 40px 40px;
+  /* Texture, not a feature. It was loud enough at 0.35 to read as a grid the user was
+     meant to notice. */
+  opacity: 0.14;
+  mask-image: radial-gradient(ellipse 100% 55% at 50% 0%, #000 10%, transparent 70%);
 }
 
 /* ---------- typography ---------- */

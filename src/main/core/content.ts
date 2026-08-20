@@ -115,7 +115,7 @@ export const SKILLS: Record<string, CanonicalSkill> = {
     description:
       'Research a question properly and report findings with sources, confidence levels and honest gaps. Use when the user types /research, asks you to research or look into a topic, asks you to compare real-world options, or asks a question whose answer depends on current facts rather than reasoning alone.',
     chatDescription:
-      'Research a question and report findings with sources and confidence levels. Use when the user types /research, asks you to research or look into something, or asks a question that depends on current facts.',
+      'Research a question and report findings with sources and confidence levels. Use when the user types /research, asks you to research something, or asks a question that depends on current facts.',
     body: `# Research
 
 Produce an answer someone could act on and later defend.

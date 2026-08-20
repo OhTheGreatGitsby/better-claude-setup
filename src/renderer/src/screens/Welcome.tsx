@@ -1,28 +1,29 @@
 import type { ReactNode } from 'react'
 import type { AppInfo } from '@shared/types'
 import { Mascot } from '../components/Mascot'
-import { Button, Disclosure, Eyebrow, Panel, PanelBody, PanelHeader } from '../components/kit'
+import { Icon } from '../components/Icon'
+import type { IconName } from '../components/Icon'
+import { Button } from '../components/kit'
 
-const PROMISES = [
+const POINTS: { icon: IconName; title: string; body: string }[] = [
   {
-    icon: '✎',
-    title: 'Better instructions',
-    body: 'A short set of working rules Claude reads at the start of every conversation.'
+    icon: 'terminal',
+    title: 'Claude Code, set up for you',
+    body: 'Better working habits and ten skills, written into Claude’s own settings.'
   },
   {
-    icon: '◈',
-    title: 'Skills, loaded on demand',
-    body: 'Writing, research, coding and planning know-how that costs nothing until it is needed.'
+    icon: 'chat',
+    title: 'The same skills in normal chats',
+    body: 'Packaged for your Claude account, so /research works in an ordinary conversation.'
   },
   {
-    icon: '↺',
-    title: 'Completely reversible',
-    body: 'A restore point before the first change, and one button to put everything back.'
+    icon: 'undo',
+    title: 'Nothing you can’t undo',
+    body: 'Every change is shown first, backed up before it happens, and reversible.'
   }
 ]
 
 export function Welcome({
-  info,
   onStart,
   onLearn
 }: {
@@ -32,17 +33,16 @@ export function Welcome({
 }): ReactNode {
   return (
     <div className="page">
-      <div className="hero" style={{ marginBottom: 'var(--s-6)' }}>
+      <div className="hero" style={{ marginBottom: 'var(--s-10)' }}>
         <div>
-          <Eyebrow>Setup · v{info?.version ?? '—'}</Eyebrow>
           <h1 className="display" style={{ marginBottom: 'var(--s-4)' }}>
             Make Claude
             <br />
             noticeably better.
           </h1>
           <p className="lead" style={{ marginBottom: 'var(--s-6)' }}>
-            Give Claude sharper instructions and a set of on-demand skills — without opening a
-            terminal or editing a single file.
+            A safe setup manager for Claude. It improves Claude Code automatically, helps you add
+            the same skills to normal Claude chats, and can undo all of it.
           </p>
           <div className="cluster">
             <Button variant="primary" size="lg" bracket onClick={onStart}>
@@ -58,32 +58,19 @@ export function Welcome({
         </div>
       </div>
 
-      <div
-        className="split"
-        style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 'var(--s-4)' }}
-      >
-        {PROMISES.map((promise) => (
-          <Panel key={promise.title}>
-            <PanelHeader icon={promise.icon} tone="accent" title={promise.title} />
-            <PanelBody>
-              <p className="small">{promise.body}</p>
-            </PanelBody>
-          </Panel>
+      <div className="plain-list" style={{ maxWidth: 640, margin: '0 auto' }}>
+        {POINTS.map((point) => (
+          <div className="plain-item" key={point.title}>
+            <span className="plain-item__icon">
+              <Icon name={point.icon} size={17} />
+            </span>
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 2 }}>{point.title}</div>
+              <p className="small">{point.body}</p>
+            </div>
+          </div>
         ))}
       </div>
-
-      <Panel sunken className="anim-rise">
-        <PanelBody tight>
-          <Disclosure summary="What this will not do">
-            <ul className="small" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}>
-              <li>It never reads your conversations, projects or documents.</li>
-              <li>It never sends anything anywhere. No account, no tracking.</li>
-              <li>It never changes Claude&apos;s safety behaviour or your Anthropic account.</li>
-              <li>It never overwrites a setting you already chose.</li>
-            </ul>
-          </Disclosure>
-        </PanelBody>
-      </Panel>
     </div>
   )
 }

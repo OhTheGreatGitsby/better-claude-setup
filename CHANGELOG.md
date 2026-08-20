@@ -6,6 +6,58 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-08-20
+
+### Fixed
+
+- **macOS builds were rejected as "damaged" and could not be opened.** Not Gatekeeper being
+  fussy about an unsigned app: the app had no signature at all. electron-builder skips
+  signing when no certificate is found and does not fall back to ad-hoc, and Apple Silicon
+  refuses to execute an unsigned binary. `hardenedRuntime: true` compounded it by enforcing
+  library validation against the pre-signed Electron framework. The build now signs ad-hoc
+  explicitly, leaves hardened runtime off until a real certificate exists, and CI verifies
+  the result on a macOS arm64 runner: signature present, deep verification including nested
+  frameworks, architecture, Gatekeeper verdict, the verdict on a copy carrying a download
+  quarantine flag, that the process starts and stays alive, and that each disk image mounts.
+- **Text could sit under the native window controls** at some widths and display scales. The
+  title strip now derives its safe area from the window controls overlay geometry the
+  operating system publishes, rather than from a fixed margin, and clears the macOS traffic
+  lights except in fullscreen. Verified at four window widths across 100%, 125% and 150%
+  display scale.
+
+### Added
+
+- **Claude Chat and web support.** The same skills, packaged as Claude account skills, with
+  a guided three-step setup. Typing `/research …` in an ordinary Claude conversation now
+  runs the same workflow as in Claude Code. Anthropic publishes no consumer API for adding
+  a skill to a personal account, so the upload is a one-time manual step; nothing here
+  touches a Claude login, session or local application data.
+- The manager shows **Claude Code** and **Claude Chat & Web** as separate surfaces with
+  separate states, because they are separate systems that Anthropic does not sync.
+- An update check for account skills, comparing what the packages now contain against what
+  the user confirmed uploading. Never a claim about account contents.
+- A ZIP writer, so building upload packages adds no runtime dependency.
+
+### Changed
+
+- **Skills lost the `bcs-` prefix**: `/research`, `/fact-check`, `/write`, `/rewrite`,
+  `/plan-work`, `/decide`, `/brainstorm`, `/design-review`, `/explain-code`, `/safe-change`.
+  Planning is `/plan-work` and research is `/research` because `/plan` is a built-in that
+  enters plan mode and `/deep-research` is a bundled skill. Installing a renamed skill
+  removes its old directory, but only when that directory carries this app's own marker.
+- One canonical skill source now exports per surface, so the Claude Code and Claude account
+  copies cannot drift apart.
+- The research skill is substantially stronger: search from multiple angles, primary over
+  secondary sources, follow claims to their origin, check dates, look for the strongest
+  counter-case, and separate evidence from interpretation from inference.
+- Every skill states plainly when it did not have web access rather than implying it searched.
+- Status language names the surface: `CODE READY · CHAT SETUP NEEDED`, `ALL READY`,
+  `CHAT UPDATE AVAILABLE`, rather than an ambiguous "active".
+- Interface polish: proper SVG icons in place of glyph characters, panel titles in the
+  interface font rather than uppercase monospace, larger type throughout (11px floor),
+  quieter background texture, softer elevation, and a simpler welcome screen.
+- A dedicated small logo mark cropped from the supplied artwork, replacing the CSS zoom.
+
 ## [1.1.0] — 2026-08-19
 
 ### Fixed
@@ -100,6 +152,7 @@ First release.
 - The two optional Anthropic plugins cannot be version-pinned, because Claude Code resolves
   the marketplace version itself.
 
-[Unreleased]: https://github.com/OhTheGreatGitsby/better-claude-setup/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/OhTheGreatGitsby/better-claude-setup/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/OhTheGreatGitsby/better-claude-setup/releases/tag/v1.2.0
 [1.1.0]: https://github.com/OhTheGreatGitsby/better-claude-setup/releases/tag/v1.1.0
 [1.0.0]: https://github.com/OhTheGreatGitsby/better-claude-setup/releases/tag/v1.0.0

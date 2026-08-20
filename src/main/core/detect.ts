@@ -11,6 +11,7 @@ import { listBackups } from './backup'
 import { loadManifest } from './manifest'
 import { SKILLS } from './content'
 import { detectClaudeDesktop } from './detect-desktop'
+import { readChatSkillsState } from './chat-skills'
 
 export { detectClaudeDesktop }
 
@@ -197,6 +198,9 @@ export async function scanSystem(
     loadManifest(env, appVersion)
   ])
 
+  step('chat-skills')
+  const chatSkills = await readChatSkillsState(env, present)
+
   step('done')
 
   return {
@@ -216,6 +220,7 @@ export async function scanSystem(
       claudeMdLines: claudeMd ? claudeMd.split('\n').length : 0,
       otherSkills
     },
+    chatSkills,
     betterClaudeSetup: {
       state: configState(present, missing),
       everInstalled: present.length + missing.length > 0,

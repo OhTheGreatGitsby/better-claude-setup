@@ -8,6 +8,7 @@ import type {
   DetectionResult,
   InstallPlan,
   OperationResult,
+  ChatSkillsState,
   StepResult
 } from '@shared/types'
 
@@ -44,10 +45,28 @@ const api = {
   revealConfig: (which: 'claude' | 'backups'): Promise<boolean> =>
     ipcRenderer.invoke(CHANNELS.revealConfig, which),
 
+  /** Claude account skills. None of these reach the user's Claude account. */
+  chatSkillsState: (): Promise<ChatSkillsState> => ipcRenderer.invoke(CHANNELS.chatSkillsState),
+  prepareChatSkills: (): Promise<{ directory: string; files: string[] }> =>
+    ipcRenderer.invoke(CHANNELS.chatSkillsPrepare),
+  confirmChatSkills: (): Promise<ChatSkillsState> => ipcRenderer.invoke(CHANNELS.chatSkillsConfirm),
+  resetChatSkills: (): Promise<ChatSkillsState> => ipcRenderer.invoke(CHANNELS.chatSkillsReset),
+  revealChatSkills: (): Promise<boolean> => ipcRenderer.invoke(CHANNELS.chatSkillsReveal),
+
   /**
    * Progress subscriptions. Each returns an unsubscribe function, and the listener only
    * ever receives plain data forwarded from the main process.
    */
+  onWindowState: (
+    listener: (state: { fullscreen: boolean; maximized: boolean; platform: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: unknown,
+      state: { fullscreen: boolean; maximized: boolean; platform: string }
+    ): void => listener(state)
+    ipcRenderer.on(CHANNELS.windowState, handler)
+    return () => ipcRenderer.removeListener(CHANNELS.windowState, handler)
+  },
   onScanStep: (listener: (step: string) => void): (() => void) => {
     const handler = (_event: unknown, step: string): void => listener(step)
     ipcRenderer.on(CHANNELS.scanProgress, handler)

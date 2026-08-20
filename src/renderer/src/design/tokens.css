@@ -72,10 +72,15 @@
   --font-mono:
     ui-monospace, 'Cascadia Mono', 'SF Mono', 'Segoe UI Mono', Menlo, Consolas, monospace;
 
-  --t-micro: 10.5px;
-  --t-label: 11.5px;
-  --t-small: 12.5px;
-  --t-body: 14px;
+  /*
+   * Sizes were raised across the board after reading the interface on a 150% Windows
+   * display: 10.5px micro-labels were legible only at 100%. The floor is now 11px, and
+   * body copy is 14.5px.
+   */
+  --t-micro: 11px;
+  --t-label: 12px;
+  --t-small: 13px;
+  --t-body: 14.5px;
   --t-lead: 16px;
   --t-h3: 15px;
   --t-h2: 19px;
@@ -86,14 +91,15 @@
   --lh-snug: 1.35;
   --lh-body: 1.55;
 
-  --track-label: 0.09em;
+  /* Wide tracking reads as terminal output; enough is kept to mark a label as a label. */
+  --track-label: 0.055em;
   --track-tight: -0.02em;
 
   /* ---- depth: hard offsets, not blur ---- */
   --edge: 0 0 0 1px var(--line);
   --edge-strong: 0 0 0 1px var(--line-strong);
-  --lift: 3px 3px 0 0 var(--line);
-  --lift-accent: 3px 3px 0 0 var(--accent-line);
+  --lift: 2px 2px 0 0 var(--line);
+  --lift-accent: 2px 2px 0 0 var(--accent-line);
   --overlay-shadow: 0 24px 60px -28px rgba(26, 23, 19, 0.55);
 
   /* ---- motion ---- */

@@ -7,11 +7,12 @@ import type {
   ComponentMeta,
   DetectionResult,
   InstallPlan,
+  ChatSkillsState,
   OperationResult,
   StepResult
 } from '@shared/types'
 import { Mascot } from './components/Mascot'
-import logo from './assets/logo.png'
+import logoMark from './assets/logo-mark.png'
 import { Notice, Track } from './components/kit'
 import { Welcome } from './screens/Welcome'
 import { Explain } from './screens/Explain'
@@ -23,6 +24,7 @@ import { Review } from './screens/Review'
 import { Installing } from './screens/Installing'
 import { Result } from './screens/Result'
 import { Manager } from './screens/Manager'
+import { ChatSetup } from './screens/ChatSetup'
 
 type Screen =
   | 'loading'
@@ -36,6 +38,7 @@ type Screen =
   | 'installing'
   | 'result'
   | 'manager'
+  | 'chat-setup'
 
 export function App(): ReactNode {
   const [screen, setScreen] = useState<Screen>('loading')
@@ -52,9 +55,18 @@ export function App(): ReactNode {
   const [result, setResult] = useState<OperationResult | null>(null)
   const [liveSteps, setLiveSteps] = useState<StepResult[]>([])
   const [liveProgress, setLiveProgress] = useState({ done: 0, total: 0 })
+  const [chatSkills, setChatSkills] = useState<ChatSkillsState | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
+
+  const [fullscreen, setFullscreen] = useState(false)
+
+  // The main process owns the truth about window chrome, because only it can see
+  // fullscreen transitions and the platform's control layout.
+  useEffect(() => {
+    return window.bcs.onWindowState((state) => setFullscreen(state.fullscreen))
+  }, [])
 
   /** Scan stages arrive from the engine as each one genuinely finishes. */
   useEffect(() => {
@@ -80,6 +92,7 @@ export function App(): ReactNode {
     setScan(nextScan)
     setInstalledIds(nextInstalled)
     setBackups(nextBackups)
+    setChatSkills(nextScan.chatSkills)
     return nextScan
   }, [])
 
@@ -208,23 +221,35 @@ export function App(): ReactNode {
 
   const platform = scan?.platform ?? 'win32'
 
+  /*
+   * The status label names which Claude it is talking about. "Active" was ambiguous: the
+   * local setup being installed says nothing about the account surface.
+   */
+  const statusLabel = ((): string => {
+    if (!scan) return ''
+    if (scan.betterClaudeSetup.state === 'partial') return 'NEEDS REPAIR'
+    const codeReady = scan.betterClaudeSetup.state === 'configured'
+    const chatReady = chatSkills?.state === 'confirmed'
+    if (chatSkills?.state === 'update-available') return 'CHAT UPDATE AVAILABLE'
+    if (codeReady && chatReady) return 'ALL READY'
+    if (codeReady) return 'CODE READY · CHAT SETUP NEEDED'
+    if (chatReady) return 'CHAT READY · CODE NOT SET UP'
+    return 'NOT SET UP'
+  })()
+
   return (
-    <div className="app" data-platform={platform}>
+    <div className="app" data-platform={platform} data-fullscreen={String(fullscreen)}>
       <header className="titlebar">
-        <span
-          className="titlebar__mark"
-          style={{ backgroundImage: `url(${logo})` }}
-          aria-hidden="true"
-        />
-        <span className="titlebar__name">Better Claude Setup</span>
-        <span className="titlebar__spacer" />
-        <span className="titlebar__meta">
-          {scan?.betterClaudeSetup.state === 'configured'
-            ? 'ACTIVE'
-            : scan?.betterClaudeSetup.state === 'partial'
-              ? 'NEEDS REPAIR'
-              : 'NOT SET UP'}
-        </span>
+        <div className="titlebar__inner">
+          <span
+            className="titlebar__mark"
+            style={{ backgroundImage: `url(${logoMark})` }}
+            aria-hidden="true"
+          />
+          <span className="titlebar__name">Better Claude Setup</span>
+          <span className="titlebar__spacer" />
+          <span className="titlebar__meta">{statusLabel}</span>
+        </div>
       </header>
 
       <main className="app__body" ref={bodyRef}>
@@ -347,6 +372,7 @@ export function App(): ReactNode {
               setResult(null)
               setScreen('manager')
             }}
+            onChatSetup={() => setScreen('chat-setup')}
             onRetry={() => setScreen('review')}
             onUndo={() => {
               const latest = backups[0]
@@ -374,6 +400,7 @@ export function App(): ReactNode {
         {screen === 'manager' && scan ? (
           <Manager
             scan={scan}
+            chatSkills={chatSkills}
             components={components}
             installedIds={installedIds}
             backups={backups}
@@ -385,11 +412,36 @@ export function App(): ReactNode {
               setSelected(installedIds.length > 0 ? installedIds : recommended)
               setScreen('customize')
             }}
+            onOpenChatSetup={() => setScreen('chat-setup')}
             onRescan={() => void refreshState()}
             onToggleComponent={(id, next) => void toggleInstalled(id, next)}
             onRepair={() => void runInstall(scan.betterClaudeSetup.missingComponentIds)}
             onRemoveAll={() => void removeComponents(installedIds)}
             onRestore={(id) => void restore(id)}
+          />
+        ) : null}
+        {screen === 'chat-setup' ? (
+          <ChatSetup
+            state={chatSkills}
+            busy={busy}
+            onPrepare={() => {
+              setBusy(true)
+              void window.bcs
+                .prepareChatSkills()
+                .then(() => window.bcs.revealChatSkills())
+                .then(() => window.bcs.chatSkillsState())
+                .then(setChatSkills)
+                .finally(() => setBusy(false))
+            }}
+            onOpenFolder={() => void window.bcs.revealChatSkills()}
+            onConfirm={() => {
+              setBusy(true)
+              void window.bcs
+                .confirmChatSkills()
+                .then(setChatSkills)
+                .finally(() => setBusy(false))
+            }}
+            onBack={() => setScreen(installedIds.length > 0 ? 'manager' : 'welcome')}
           />
         ) : null}
       </main>

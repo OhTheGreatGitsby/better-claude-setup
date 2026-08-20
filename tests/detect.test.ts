@@ -228,7 +228,7 @@ describe('existing skills', () => {
 
     const foreign = await listForeignSkills(env)
     expect(foreign).toEqual(['another', 'my-own-skill'])
-    expect(foreign).not.toContain('bcs-essay')
+    expect(foreign).not.toContain('write')
   })
 })
 
@@ -288,7 +288,7 @@ describe('system scan', () => {
 
   it('notices when a skill the manifest claims was deleted by hand', async () => {
     await installComponents(env, VERSION, ['core-behaviour', 'writing-toolkit'])
-    await fs.rm(join(skillsDir(env), 'bcs-essay'), { recursive: true, force: true })
+    await fs.rm(join(skillsDir(env), 'write'), { recursive: true, force: true })
 
     const scan = await scanSystem(env, VERSION)
     expect(scan.betterClaudeSetup.state).toBe('partial')

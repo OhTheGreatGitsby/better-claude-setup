@@ -54,7 +54,7 @@ test('the whole setup path works end to end', async ({ window, home }) => {
   await expect(window.getByText(/better claude core/i)).toBeVisible()
   await expect(window.getByText(/preserved/i).first()).toBeVisible()
   // Still nothing written: the review screen is a preview.
-  expect(home.hasSkill('bcs-essay')).toBe(false)
+  expect(home.hasSkill('write')).toBe(false)
 
   // --- install ------------------------------------------------------------------
   await window.getByRole('button', { name: /approve and set up/i }).click()
@@ -66,8 +66,8 @@ test('the whole setup path works end to end', async ({ window, home }) => {
   await expect(window.getByText(/now active/i)).toBeVisible()
 
   // The files really are on disk, and the user's own content survived.
-  expect(home.hasSkill('bcs-essay')).toBe(true)
-  expect(home.hasSkill('bcs-plan')).toBe(true)
+  expect(home.hasSkill('write')).toBe(true)
+  expect(home.hasSkill('plan-work')).toBe(true)
   expect(home.hasSkill('my-own-skill')).toBe(true)
   const afterInstall = home.readClaudeMd() ?? ''
   expect(afterInstall).toContain('Always run make test.')
@@ -88,8 +88,8 @@ test('the whole setup path works end to end', async ({ window, home }) => {
   })
 
   // Only that component's files went; everything else stayed.
-  expect(home.hasSkill('bcs-essay')).toBe(false)
-  expect(home.hasSkill('bcs-plan')).toBe(true)
+  expect(home.hasSkill('write')).toBe(false)
+  expect(home.hasSkill('plan-work')).toBe(true)
   expect(home.hasSkill('my-own-skill')).toBe(true)
 
   // --- restore ------------------------------------------------------------------
@@ -154,7 +154,7 @@ test('the custom path lets a single component be chosen', async ({ window, home 
   })
 
   expect(home.readClaudeMd()).toContain('better-claude-setup:core-behaviour')
-  expect(home.hasSkill('bcs-essay')).toBe(false)
+  expect(home.hasSkill('write')).toBe(false)
 })
 
 test.describe('when Claude Code is not installed', () => {
@@ -181,6 +181,6 @@ test.describe('when Claude Code is not installed', () => {
     await expect(window.getByRole('heading', { name: /claude is ready/i })).toBeVisible({
       timeout: 30_000
     })
-    expect(home.hasSkill('bcs-essay')).toBe(true)
+    expect(home.hasSkill('write')).toBe(true)
   })
 })

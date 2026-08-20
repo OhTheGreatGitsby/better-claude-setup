@@ -40,7 +40,7 @@ describe('path traversal defences', () => {
 
   it('keeps resolved paths inside the root', () => {
     const root = join('/tmp', 'root')
-    expect(resolveInside(root, 'skills/bcs-essay')).toContain('root')
+    expect(resolveInside(root, 'skills/research')).toContain('root')
     expect(() => resolveInside(root, '../outside')).toThrow()
   })
 

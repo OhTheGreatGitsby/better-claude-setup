@@ -9,7 +9,7 @@ import type {
   StepResult
 } from '@shared/types'
 import { CORE_BLOCK_ID, PLUGIN_REFS, SETTING_VALUES, SKILL_GROUPS, componentById } from './catalog'
-import { CORE_PRESET, skillFileContents } from './content'
+import { CORE_PRESET, SKILLS, toClaudeCodeSkill } from './content'
 import { claudeHome, claudeMdPath, claudeSettingsPath, skillsDir } from './env'
 import type { Env } from './env'
 import { loadJson, mergeOwnedKeys, removeOwnedKeys, saveJson } from './json-config'
@@ -82,8 +82,8 @@ export async function buildPlan(
           changes.push({
             componentId: id,
             kind: 'skill-dir',
-            label: `Add the ${skillId.replace(/^bcs-/, '').replace(/-/g, ' ')} skill`,
-            target: `skills/${skillId}/SKILL.md`,
+            label: `Add the ${SKILLS[skillId]?.title ?? skillId} skill`,
+            target: `skills/${SKILLS[skillId]?.command ?? skillId}/SKILL.md`,
             detail: 'Loaded only when relevant, so it costs almost nothing the rest of the time.'
           })
         }
@@ -120,7 +120,26 @@ export async function buildPlan(
 function skillDirFor(env: Env, skillId: string): string {
   // resolveInside proves the computed path cannot escape the skills directory even if a
   // future catalogue entry contained something unexpected.
-  return resolveInside(skillsDir(env), join(skillId))
+  const command = SKILLS[skillId]?.command ?? skillId
+  return resolveInside(skillsDir(env), join(command))
+}
+
+/**
+ * Version 1.1 installed these skills under `bcs-` prefixed names. Leaving those
+ * directories behind after the rename would give the user two copies of every skill, both
+ * competing to be triggered.
+ *
+ * The old directory is only removed when its SKILL.md carries this application's own
+ * marker, so a folder the user happens to have named the same way is never touched.
+ */
+async function removeRenamedPredecessor(env: Env, skillId: string): Promise<boolean> {
+  const legacy = SKILLS[skillId]?.legacyCommand
+  if (!legacy) return false
+  const dir = resolveInside(skillsDir(env), legacy)
+  const marker = await readTextIfExists(join(dir, 'SKILL.md'))
+  if (marker === null || !marker.includes('Installed by Better Claude Setup')) return false
+  await removeIfExists(dir)
+  return true
 }
 
 async function buildOperations(
@@ -186,14 +205,18 @@ function skillOperations(env: Env, meta: ComponentMeta): Operation[] {
     id: `${meta.id}:${skillId}`,
     componentId: meta.id,
     version: meta.version,
-    label: `Add the ${skillId} skill`,
+    label: `Add the /${SKILLS[skillId]?.command ?? skillId} skill`,
     apply: async () => {
       const dir = skillDirFor(env, skillId)
       await ensureDir(dir)
-      await writeTextAtomic(join(dir, 'SKILL.md'), skillFileContents(skillId))
+      await writeTextAtomic(join(dir, 'SKILL.md'), toClaudeCodeSkill(skillId))
+      const command = SKILLS[skillId]?.command ?? skillId
+      const migrated = await removeRenamedPredecessor(env, skillId)
       return {
-        artifacts: [{ type: 'skill-dir', relPath: `skills/${skillId}` }],
-        detail: `Created skills/${skillId}/SKILL.md`
+        artifacts: [{ type: 'skill-dir', relPath: `skills/${command}` }],
+        detail: migrated
+          ? `Created skills/${command}/SKILL.md and removed the old ${SKILLS[skillId]?.legacyCommand} folder`
+          : `Created skills/${command}/SKILL.md`
       }
     },
     undo: async () => {

@@ -108,7 +108,13 @@ export async function listForeignSkills(env: Env): Promise<string[]> {
   const dir = skillsDir(env)
   if (!(await pathExists(dir))) return []
   const entries = await fs.readdir(dir, { withFileTypes: true })
-  const ours = new Set(Object.keys(SKILLS))
+  // Both the current command names and the v1.1 names count as ours, so a folder left
+  // over from the rename is never reported back to the user as one of their own.
+  const ours = new Set<string>()
+  for (const skill of Object.values(SKILLS)) {
+    ours.add(skill.command)
+    ours.add(skill.legacyCommand)
+  }
   return entries
     .filter((e) => e.isDirectory() && !ours.has(e.name))
     .map((e) => e.name)

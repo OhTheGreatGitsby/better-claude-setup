@@ -32,7 +32,7 @@ describe('planning', () => {
     expect(plan.changes.length).toBeGreaterThan(0)
     expect(plan.backupWillBeCreated).toBe(true)
     expect(plan.changes.some((c) => c.target === 'CLAUDE.md')).toBe(true)
-    expect(plan.changes.some((c) => c.target.includes('bcs-essay'))).toBe(true)
+    expect(plan.changes.some((c) => c.target.includes('write'))).toBe(true)
     // Planning must not create anything.
     expect(await exists(env, '.claude/CLAUDE.md')).toBe(false)
     expect(await exists(env, '.claude/skills')).toBe(false)
@@ -53,8 +53,8 @@ describe('installing into an empty configuration', () => {
     expect(claudeMd).toContain('BEGIN better-claude-setup:core-behaviour')
     expect(claudeMd).toContain('Be accurate before agreeable')
 
-    const skill = await readFile(env, '.claude/skills/bcs-essay/SKILL.md')
-    expect(skill).toContain('name: bcs-essay')
+    const skill = await readFile(env, '.claude/skills/write/SKILL.md')
+    expect(skill).toContain('name: write')
     expect(skill).toContain('description:')
   })
 
@@ -153,7 +153,7 @@ describe('failure handling', () => {
     expect(result.ok).toBe(false)
     expect(result.rolledBack).toBe(true)
     expect(await exists(env, '.claude/CLAUDE.md')).toBe(false)
-    expect(await exists(env, '.claude/skills/bcs-essay')).toBe(false)
+    expect(await exists(env, '.claude/skills/write')).toBe(false)
   })
 
   it('reports nothing to do when the selection is empty', async () => {
@@ -186,7 +186,7 @@ describe('removing components', () => {
     await installComponents(env, VERSION, ['writing-toolkit'])
     await removeComponents(env, VERSION, ['writing-toolkit'])
 
-    expect(await exists(env, '.claude/skills/bcs-essay')).toBe(false)
+    expect(await exists(env, '.claude/skills/write')).toBe(false)
     expect(await exists(env, '.claude/skills/my-own-skill/SKILL.md')).toBe(true)
   })
 
@@ -238,7 +238,7 @@ describe('backup and restore', () => {
     expect(await readFile(env, '.claude/CLAUDE.md')).toBe(originalMd)
     expect((await loadJson(claudeSettingsPath(env))).value).toEqual(originalSettings)
     expect(await readFile(env, '.claude/skills/my-own-skill/SKILL.md')).toBe('mine')
-    expect(await exists(env, '.claude/skills/bcs-essay')).toBe(false)
+    expect(await exists(env, '.claude/skills/write')).toBe(false)
   })
 
   it('removes files that did not exist before, when restoring', async () => {

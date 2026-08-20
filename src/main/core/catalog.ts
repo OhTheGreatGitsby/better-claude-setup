@@ -58,11 +58,11 @@ export const CATEGORIES: Category[] = [
 
 /** Components whose kind is `skill` install these skill directories. */
 export const SKILL_GROUPS: Record<string, string[]> = {
-  'writing-toolkit': ['bcs-essay', 'bcs-rewrite'],
-  'research-toolkit': ['bcs-deep-research', 'bcs-fact-check'],
-  'coding-toolkit': ['bcs-explain-code', 'bcs-safe-change'],
-  'planning-toolkit': ['bcs-plan', 'bcs-decide'],
-  'design-toolkit': ['bcs-design-critique', 'bcs-brainstorm']
+  'writing-toolkit': ['write', 'rewrite'],
+  'research-toolkit': ['research', 'fact-check'],
+  'coding-toolkit': ['explain-code', 'safe-change'],
+  'planning-toolkit': ['plan-work', 'decide'],
+  'design-toolkit': ['design-review', 'brainstorm']
 }
 
 /** Components whose kind is `setting` merge exactly these keys into settings.json. */
@@ -80,11 +80,13 @@ export const PLUGIN_REFS: Record<string, string> = {
 export const CORE_BLOCK_ID = 'core-behaviour'
 
 function skillWrites(componentId: string): string[] {
-  return (SKILL_GROUPS[componentId] ?? []).map((id) => `<claude-home>/skills/${id}/SKILL.md`)
+  return (SKILL_GROUPS[componentId] ?? []).map(
+    (id) => `<claude-home>/skills/${SKILLS[id]?.command ?? id}/SKILL.md`
+  )
 }
 
 function skillNames(componentId: string): string {
-  return (SKILL_GROUPS[componentId] ?? []).map((id) => `/${SKILLS[id]?.dir ?? id}`).join(', ')
+  return (SKILL_GROUPS[componentId] ?? []).map((id) => `/${SKILLS[id]?.command ?? id}`).join(', ')
 }
 
 export const COMPONENTS: ComponentMeta[] = [

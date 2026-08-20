@@ -78,11 +78,13 @@ jobs:
 
       - name: Package (macOS)
         if: runner.os == 'macOS'
-        # No Apple Developer certificate is available, so the build is unsigned and not
-        # notarised. This is documented in the README rather than worked around.
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        # Ad-hoc signed, not notarised: no Apple Developer certificate is available. See
+        # scripts/verify-macos-build.sh for what that means and what is checked.
         run: npx electron-builder --mac --publish never
+
+      - name: Verify the macOS package can actually run
+        if: runner.os == 'macOS'
+        run: bash scripts/verify-macos-build.sh release
 
       - name: Upload installers
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

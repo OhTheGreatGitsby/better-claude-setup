@@ -93,13 +93,16 @@
       "icon": "build/icon.png",
       "category": "public.app-category.developer-tools",
       "artifactName": "Better-Claude-Setup-${arch}.${ext}",
-      "hardenedRuntime": true,
+      "identity": "-",
+      "hardenedRuntime": false,
       "gatekeeperAssess": false,
+      "notarize": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "dmg": {
-      "artifactName": "Better-Claude-Setup-${arch}.${ext}"
+      "artifactName": "Better-Claude-Setup-${arch}.${ext}",
+      "sign": false
     },
     "linux": {
       "target": [

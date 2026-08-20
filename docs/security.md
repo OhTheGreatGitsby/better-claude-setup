@@ -128,9 +128,32 @@ Reading the registry is a read; the app never writes to it.
 shipped application, where `realEnv()` never populates it, so there is no path by which a
 renderer or a configuration file could substitute a command runner.
 
+## The Claude account boundary
+
+Support for ordinary Claude chats deliberately stops where automation would require
+handling the user's Claude account. The app:
+
+- **does not** sign in, read cookies, read session tokens, or touch Claude's own local
+  application data
+- **does not** call undocumented account endpoints or automate a hidden browser flow
+- **does** build upload packages from local content, open a folder, and open documented
+  https pages in the user's own browser
+- **does** record the user's own statement that they completed the upload, and describes it
+  in the interface as their confirmation rather than as a detection
+
+There is no documented consumer API for installing a skill into a personal Claude account.
+If one appears, it can be adopted; until then a guided manual step is the honest option, and
+faking the rest would mean exactly the credential handling this project refuses.
+
+The generated archives contain only Markdown built from this repository's own content. No
+scripts, no executables, no network references.
+
 ## Dependencies
 
 Runtime: `react`, `react-dom`. That is all.
+
+Packaging skills as zip archives is done by a 116-line writer in `core/zip.ts` rather than
+by adding an archiving library, keeping the shipped dependency count unchanged.
 
 Everything else, including Playwright, is a build-time dependency and is not shipped
 inside the application bundle. All versions are pinned exactly (`--save-exact`), and `npm ci` in CI installs from

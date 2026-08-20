@@ -98,9 +98,30 @@ actually run, not when the code that would do it was written.
 - [x] Playwright interface tests over the whole critical path, wired into CI
 - [x] Visual review of every screen in dark, light and at a narrow window size
 
+## DONE — v1.2.0
+
+- [x] Confirm the local logo work was safe: already committed as 64fdd30 and pushed
+- [x] Re-research Claude account skills; the v1.1 "chats cannot use these" claim is now wrong
+- [x] Diagnose the macOS "damaged" failure: the app had no signature at all, because
+      electron-builder skips signing with no certificate and does not fall back to ad-hoc
+- [x] Fix it with explicit ad-hoc signing and hardened runtime off, verified on a macOS
+      arm64 runner including a quarantined copy and a real process launch
+- [x] One canonical skill source exporting to Claude Code and Claude account formats
+- [x] Rename the commands, avoiding the /plan and /deep-research collisions
+- [x] Build account upload packages with an in-repo ZIP writer, no new dependency
+- [x] Guided three-step chat setup that never touches the account
+- [x] Separate Claude Code and Claude Chat surfaces throughout, with specific status wording
+- [x] Fix the native-control overlap using the overlay geometry the OS publishes,
+      measured at four widths across three display scales
+- [x] Interface polish: SVG icon set, interface-font panel titles, larger type, quieter grid
+- [x] Dedicated small logo mark cropped from the supplied artwork
+- [x] Download-first README with direct per-architecture links
+
 ## TODO — next
 
-- [ ] Sign and notarise once certificates exist
+- [ ] Sign and notarise once certificates exist — the single largest remaining gap
+- [ ] Behavioural evaluation of the skills themselves across both surfaces; current tests
+      assert content and packaging, not answer quality
 - [ ] Confirm macOS desktop-app detection against a real macOS installation
 - [ ] Detect the languages a user actually works in, and offer the matching LSP plugin
 - [ ] Update checking for installed components, with a visible diff of what changed

@@ -235,7 +235,7 @@ export function Scan({
 
         <DataRow
           icon={STAGES[5].icon}
-          label="Claude Chat &amp; Web"
+          label="Claude Chat & Web"
           sub={
             scan && stagesDone.includes('chat-skills')
               ? scan.chatSkills.state === 'confirmed'
